@@ -1,0 +1,178 @@
+{
+  "_comment": "Vapi assistant config (POST/PATCH /assistant). No secrets. Keys starting with '_' are stripped by deploy.py. __SYSTEM_PROMPT__ is replaced with vapi/system-prompt.md, __VAPI_CREDENTIAL_ID__ with the X-Vapi-Secret credential. Explained in docs/design/VAPI_CONFIG.md.",
+  "name": "Everlast Interview - Junior Entwickler",
+  "metadata": {
+    "jobId": "junior-entwickler-vollzeit",
+    "jobTitle": "Junior Entwickler – Vollzeit (m/w/d)",
+    "company": "Everlast Consulting GmbH",
+    "configSource": "vapi/assistant.json"
+  },
+
+  "firstMessageMode": "assistant-speaks-first",
+  "firstMessageInterruptionsEnabled": false,
+  "firstMessage": "Hallo und schön, dass du da bist! Ich bin der KI-Assistent von Everlast Consulting und führe heute ein erstes Kennenlerngespräch mit dir für die Stelle als Junior Entwickler. Kurz vorab: Das Gespräch wird aufgezeichnet und automatisch ausgewertet, die Entscheidung trifft aber immer unser HR-Team. Bist du damit einverstanden?",
+  "endCallMessage": "Danke dir für deine Zeit und alles Gute. Tschüss!",
+  "endCallPhrases": ["tschüss", "auf wiederhören"],
+  "voicemailMessage": "Hallo, hier ist der KI-Assistent von Everlast Consulting. Wir wollten mit dir ein erstes Kennenlerngespräch für die Stelle als Junior Entwickler führen. Wir melden uns noch einmal bei dir. Bis bald!",
+  "voicemailDetection": {
+    "provider": "vapi",
+    "type": "audio"
+  },
+
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4.1-mini",
+    "fallbackModels": ["gpt-4.1"],
+    "temperature": 0.4,
+    "maxTokens": 150,
+    "promptCacheRetention": "24h",
+    "messages": [
+      { "role": "system", "content": "__SYSTEM_PROMPT__" }
+    ],
+    "tools": [
+      {
+        "type": "endCall",
+        "rejectionPlan": {
+          "conditions": [
+            {
+              "type": "regex",
+              "regex": "(?i)\\b(warte|wart mal|moment|noch (eine|ne) frage|eine frage noch|kurze frage)\\b",
+              "target": { "role": "user", "position": -1 }
+            }
+          ]
+        }
+      }
+    ]
+  },
+
+  "voice": {
+    "provider": "cartesia",
+    "model": "sonic-3.6",
+    "language": "de",
+    "voiceId": "dff81230-ff75-49a4-af44-f6b2f43500d8",
+    "_voiceName": "Jonas (Cartesia, de, male) - casual, warm, friendly, conversational",
+    "chunkPlan": {
+      "enabled": true,
+      "minCharacters": 12,
+      "formatPlan": {
+        "enabled": true,
+        "formattersEnabled": ["markdown", "asterisk", "stripAsterisk", "quote", "newline"],
+        "replacements": [
+          { "type": "exact", "key": "n8n", "value": "n eight n", "replaceAllEnabled": true },
+          { "type": "regex", "regex": "\\bVapi\\b", "value": "Wapi" },
+          { "type": "regex", "regex": "\\bAPI", "value": "A P I" },
+          { "type": "regex", "regex": "\\bLLM", "value": "L L M" },
+          { "type": "regex", "regex": "\\bMake\\b", "value": "Mejk" }
+        ]
+      }
+    },
+    "fallbackPlan": {
+      "voices": [
+        {
+          "provider": "azure",
+          "voiceId": "de-DE-FlorianMultilingualNeural",
+          "chunkPlan": {
+            "enabled": true,
+            "minCharacters": 12,
+            "formatPlan": {
+              "enabled": true,
+              "formattersEnabled": ["markdown", "asterisk", "stripAsterisk", "quote", "newline"],
+              "replacements": [
+                { "type": "exact", "key": "n8n", "value": "n eight n", "replaceAllEnabled": true },
+                { "type": "regex", "regex": "\\bVapi\\b", "value": "Wapi" },
+                { "type": "regex", "regex": "\\bAPI", "value": "A P I" },
+                { "type": "regex", "regex": "\\bLLM", "value": "L L M" },
+                { "type": "regex", "regex": "\\bMake\\b", "value": "Mejk" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+
+  "transcriber": {
+    "provider": "deepgram",
+    "model": "flux-general-multi",
+    "languages": ["de"],
+    "keyterm": ["Everlast", "n8n", "Vapi", "JavaScript", "TypeScript", "Python", "React", "API", "Webhook", "GitHub", "LLM", "Make"],
+    "eotThreshold": 0.7,
+    "eotTimeoutMs": 5000,
+    "fallbackPlan": {
+      "transcribers": [
+        {
+          "provider": "soniox",
+          "model": "stt-rt-v6",
+          "language": "de",
+          "customVocabulary": ["Everlast", "n8n", "Vapi", "JavaScript", "TypeScript", "Python", "React", "API", "Webhook", "GitHub", "LLM", "Make"]
+        }
+      ]
+    }
+  },
+
+  "startSpeakingPlan": {
+    "waitSeconds": 0.3
+  },
+  "stopSpeakingPlan": {
+    "numWords": 1,
+    "backoffSeconds": 1,
+    "acknowledgementPhrases": ["ja", "mhm", "okay", "ok", "genau", "aha", "hm", "stimmt", "alles klar"],
+    "interruptionPhrases": ["stopp", "warte", "moment", "nein", "aber", "eigentlich", "entschuldigung", "sorry"]
+  },
+  "backgroundSound": "off",
+  "backgroundSpeechDenoisingPlan": {
+    "smartDenoisingPlan": { "enabled": true }
+  },
+
+  "maxDurationSeconds": 1200,
+  "hooks": [
+    {
+      "name": "stille-nachfragen",
+      "on": "customer.speech.timeout",
+      "options": { "timeoutSeconds": 12, "triggerMaxCount": 2, "triggerResetMode": "onUserSpeech" },
+      "do": [
+        { "type": "say", "exact": ["Bist du noch da?", "Lass dir ruhig Zeit. Bist du noch da?"] }
+      ]
+    },
+    {
+      "name": "stille-beenden",
+      "on": "customer.speech.timeout",
+      "options": { "timeoutSeconds": 30, "triggerMaxCount": 1, "triggerResetMode": "never" },
+      "do": [
+        {
+          "type": "tool",
+          "tool": {
+            "type": "endCall",
+            "messages": [
+              {
+                "type": "request-start",
+                "content": "Ich höre leider nichts mehr von dir, deshalb beende ich das Gespräch jetzt. Melde dich gern noch einmal. Tschüss!",
+                "blocking": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+
+  "server": {
+    "url": "https://n8n.mal-zeta.de/webhook/vapi/interview",
+    "credentialId": "__VAPI_CREDENTIAL_ID__",
+    "timeoutSeconds": 20,
+    "backoffPlan": { "type": "exponential", "maxRetries": 3, "baseDelaySeconds": 2 }
+  },
+  "serverMessages": ["end-of-call-report"],
+
+  "artifactPlan": {
+    "recordingEnabled": true,
+    "recordingFormat": "mp3",
+    "loggingEnabled": true,
+    "transcriptPlan": { "enabled": true }
+  },
+  "analysisPlan": {
+    "summaryPlan": { "enabled": false },
+    "structuredDataPlan": { "enabled": false },
+    "successEvaluationPlan": { "enabled": false }
+  }
+}

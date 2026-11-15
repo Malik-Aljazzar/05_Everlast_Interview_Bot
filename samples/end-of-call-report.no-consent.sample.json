@@ -1,0 +1,27 @@
+{
+  "message": {
+    "type": "end-of-call-report",
+    "endedReason": "assistant-ended-call",
+    "startedAt": "2026-11-15T14:20:00.000Z",
+    "endedAt": "2026-11-15T14:20:41.000Z",
+    "call": {
+      "id": "test-call-0002",
+      "assistantId": "test-assistant",
+      "type": "webCall"
+    },
+    "assistant": {
+      "id": "test-assistant"
+    },
+    "artifact": {
+      "transcript": "AI: Hallo, hier ist Mia ...\nUser: Nein, das möchte ich nicht.",
+      "recording": {
+        "stereoUrl": "https://storage.vapi.ai/test-call-0002-stereo.wav"
+      },
+      "messages": [
+        { "role": "bot", "message": "Hallo, hier ist Mia, die KI-Assistentin von Everlast Consulting. Ich führe heute ein erstes Kennenlerngespräch mit dir für die Stelle als Junior Entwickler. Das Gespräch wird aufgezeichnet und anschließend automatisch ausgewertet, die Entscheidung trifft aber immer unser HR-Team. Bist du damit einverstanden?" },
+        { "role": "user", "message": "Nein, aufzeichnen lassen möchte ich das eigentlich nicht." },
+        { "role": "bot", "message": "Das ist völlig in Ordnung. Dann beenden wir das Gespräch an dieser Stelle. Unser HR-Team meldet sich bei dir, um einen anderen Weg zu finden. Danke dir und bis bald!" }
+      ]
+    }
+  }
+}

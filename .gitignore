@@ -1,0 +1,12 @@
+# Secrets – nie committen
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+*credentials*.json
+
+# Python
+__pycache__/
+*.pyc
