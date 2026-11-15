@@ -11,10 +11,16 @@ Steps:
   5. Append newly created IDs (IDs only, never secrets) to .env.
   6. GET the assistant back and verify the stored config matches the payload.
 
+The prompt sections "# Stelle" and "# Leitfaden" are maintained in Google Sheets
+and synced into Vapi by the n8n workflow "Vapi – Leitfaden synchronisieren". When
+updating an existing assistant, this script keeps the live versions of those
+sections; the text in system-prompt.md is only the initial value.
+
 Usage:
-  python vapi/deploy.py            # deploy + verify
-  python vapi/deploy.py --dry-run  # build payload and print summary, no API calls
-  python vapi/deploy.py --verify   # only GET + verify the existing assistant
+  python vapi/deploy.py                    # deploy + verify
+  python vapi/deploy.py --dry-run          # build payload and print summary, no API calls
+  python vapi/deploy.py --verify           # only GET + verify the existing assistant
+  python vapi/deploy.py --reset-sections   # overwrite the synced sections with system-prompt.md
 
 Secrets are never printed: every line of output passes through redact().
 Note: PATCH replaces the top-level objects that are sent, but fields that
@@ -155,12 +161,37 @@ def strip_private_keys(obj):
 def load_prompt() -> str:
     text = PROMPT_PATH.read_text(encoding="utf-8")
     text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)  # drop maintainer comments
+    text = re.sub(r"\n{3,}", "\n\n", text)  # removed comments leave blank lines behind
     return text.strip() + "\n"
 
 
-def build_payload(credential_id: str) -> dict:
+# Sections synced from Google Sheets by n8n: (heading, next heading).
+SYNCED_SECTIONS = [("# Stelle", "# Leitfaden"), ("# Leitfaden", "# Gesprächsregeln")]
+
+
+def keep_synced_sections(prompt: str, live_prompt: str) -> str:
+    """Replace the synced sections in the repo prompt with their live versions."""
+    for start, end in SYNCED_SECTIONS:
+        pattern = re.compile(rf"({re.escape(start)}\n)(.*?)(\n{re.escape(end)}\n)", re.DOTALL)
+        live = pattern.search(live_prompt)
+        if live and pattern.search(prompt):
+            prompt = pattern.sub(lambda m: m.group(1) + live.group(2) + m.group(3), prompt, count=1)
+    return prompt
+
+
+def live_system_prompt(api_key: str, assistant_id: str) -> str:
+    stored = api("GET", f"/assistant/{assistant_id}", api_key)
+    for msg in stored.get("model", {}).get("messages", []):
+        if msg.get("role") == "system":
+            return msg.get("content", "")
+    return ""
+
+
+def build_payload(credential_id: str, live_prompt: str = "") -> dict:
     payload = strip_private_keys(json.loads(ASSISTANT_PATH.read_text(encoding="utf-8")))
     prompt = load_prompt()
+    if live_prompt:
+        prompt = keep_synced_sections(prompt, live_prompt)
     replaced = False
     for msg in payload.get("model", {}).get("messages", []):
         if msg.get("content") == PROMPT_PLACEHOLDER:
@@ -306,16 +337,21 @@ def main() -> None:
         return
 
     assistant_id = env.get("VAPI_ASSISTANT_ID")
+    live_prompt = ""
+    if assistant_id and "--reset-sections" not in args:
+        live_prompt = live_system_prompt(api_key, assistant_id)
+        say("Abschnitte „Stelle“ und „Leitfaden“ werden aus dem Live-Assistant übernommen (Google-Sheets-Sync).")
+
     if "--verify" in args:
         if not assistant_id:
             fail("VAPI_ASSISTANT_ID fehlt in .env.")
-        payload = build_payload(env.get("VAPI_CREDENTIAL_ID", CREDENTIAL_PLACEHOLDER))
+        payload = build_payload(env.get("VAPI_CREDENTIAL_ID", CREDENTIAL_PLACEHOLDER), live_prompt)
         sys.exit(0 if verify(api_key, assistant_id, payload) else 2)
 
     new_ids: dict[str, str] = {}
     try:
         cred_id = ensure_credential(env, api_key, new_ids)
-        payload = build_payload(cred_id)
+        payload = build_payload(cred_id, live_prompt)
         if assistant_id:
             api("PATCH", f"/assistant/{assistant_id}", api_key, payload)
             say("Assistant aktualisiert (PATCH):", assistant_id)

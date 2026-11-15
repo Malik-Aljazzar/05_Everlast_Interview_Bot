@@ -74,8 +74,13 @@ Wenn alle Punkte abgedeckt sind, fasst der Agent die nächsten Schritte zusammen
 **REQ-1.7 – Sonderfälle** `SHOULD`
 Definiertes Verhalten bei: längerer Stille, Voicemail, Verbindungsabbruch, unpassenden oder beleidigenden Äußerungen, Fragen, die der Agent nicht beantworten kann (z. B. Gehalt der Stelle → Verweis auf HR).
 
-**REQ-1.8 – Kanal Telefon** `SHOULD`
-Der Agent ist über eine Telefonnummer erreichbar. Ohne eigene UI ist das der einzige Zugang für echte Bewerber; das Vapi-Dashboard dient nur der Demo.
+**REQ-1.8 – Gesprächsstart: zwei Wege** `SHOULD`
+Ohne eigene UI ist das Telefon der einzige Zugang für echte Bewerber; das Vapi-Dashboard dient nur der Demo. Das Interview kann auf zwei Wegen starten:
+
+- **Eingehend:** Der Bewerber ruft die Telefonnummer des Agents an.
+- **Ausgehend über Calendly:** Der Bewerber bucht einen Termin über Calendly. Zum Termin ruft der Agent ihn an (Calendly-Webhook → n8n → Vapi `POST /call` mit Assistant-ID, Telefonnummer und Bewerberdaten).
+
+Beide Wege nutzen denselben Assistant und denselben Auswertungs-Workflow. Unterschiede gibt es bei Begrüßung, Voicemail und der Zuordnung des Bewerbers (Anrufernummer bzw. Calendly-Daten in den Call-Metadaten).
 
 ---
 
@@ -150,16 +155,11 @@ _Hinweis für die Präsentation:_ Vapi bietet eine eigene Analyse an. Sie wird b
 **REQ-4.2 – Eingangsdaten** `MUST`
 Die Analyse nutzt das vollständige Transkript mit Sprecherzuordnung sowie die Metadaten aus REQ-3.6.
 
-**REQ-4.3 – Bewertungsschema** `MUST`
-Die Bewertung erfolgt nach festen Kriterien, z. B.:
+**REQ-4.3 – Bewertungsschema aus Google Sheets** `MUST`
+Stellenprofil, Muss-Kriterien, Bewertungskriterien (Gewicht, Skala mit Stufenbeschreibungen) und Interview-Leitfaden werden in eigenen Tabs der Google-Tabelle gepflegt („Stellen“, „Bewertung“, „Leitfaden“) und je Assistant-ID dynamisch geladen. Leere Felder bekommen Standardwerte (z. B. Skala 1–5). Jedes Kriterium bekommt eine Stufe auf seiner Skala und eine kurze Begründung mit Bezug auf eine Aussage aus dem Gespräch. Gesamtscore (in %) und Empfehlung berechnet n8n nach den Regeln aus dem Tab „Stellen“. Details: [BEWERTUNG_UND_LEITFADEN.md](../design/BEWERTUNG_UND_LEITFADEN.md).
 
-- Kommunikation
-- Fachliche Eignung
-- Motivation
-- Kultureller Fit
-- Rahmenbedingungen (Gehalt, Verfügbarkeit)
-
-Jedes Kriterium bekommt einen Score (z. B. 1–5) und eine kurze Begründung mit Bezug auf eine Aussage aus dem Gespräch.
+**REQ-4.3a – Leitfaden-Sync nach Vapi** `SHOULD`
+Stellenfakten und Leitfaden aus der Tabelle werden per n8n-Workflow (stündlich und manuell) in den System-Prompt des Vapi-Assistants übernommen, ohne n8n-Aufruf während des Gesprächs.
 
 **REQ-4.4 – Strukturiertes Protokoll** `MUST`
 Das Ergebnis folgt einem festen JSON-Schema (im Structured Output Parser hinterlegt) und enthält:
