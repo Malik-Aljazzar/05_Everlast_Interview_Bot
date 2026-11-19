@@ -53,4 +53,4 @@ Ein verspätetes `ended` setzt ein fertiges Protokoll nicht zurück (Knoten „S
 
 - DNS-Name (z. B. `interview.mal-zeta.de`) mit HTTPS über den vorhandenen nginx und certbot.
 - Login, bevor die IP-Sperre fällt.
-- Neue Stellen legt weiterhin `deploy.py --job` als Vapi-Assistant an; die UI pflegt nur deren Inhalte.
+- Neue Stellen legt weiterhin `deploy.py --job` als Vapi-Assistant an. In der UI trägt „+ Neue Stelle“ dessen Assistant-ID ein; die Stelle landet erst beim ersten Speichern in den Data Tables.

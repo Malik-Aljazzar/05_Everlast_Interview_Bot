@@ -19,12 +19,24 @@ export default function Konfiguration({ stellen, onGespeichert }: { stellen: Ste
   const [entwurf, setEntwurf] = useState<Stelle | null>(null);
   const [speichert, setSpeichert] = useState(false);
   const [meldung, setMeldung] = useState<{ art: 'ok' | 'fehler'; text: string } | null>(null);
+  // Neue Stellen gibt es erst nach dem ersten Speichern in den Tabellen; bis dahin nur hier.
+  const [neue, setNeue] = useState<Stelle[]>([]);
 
-  const original = useMemo(() => stellen.find((s) => s.assistantId === auswahl) ?? null, [stellen, auswahl]);
+  const alle = useMemo(() => [...stellen, ...neue.filter((n) => !stellen.some((s) => s.assistantId === n.assistantId))], [stellen, neue]);
+  const original = useMemo(() => alle.find((s) => s.assistantId === auswahl) ?? null, [alle, auswahl]);
 
   useEffect(() => {
     if (!auswahl && stellen.length) setAuswahl(stellen[0].assistantId);
   }, [stellen, auswahl]);
+
+  const neueStelle = () => {
+    const id = window.prompt('Assistant-ID der neuen Stelle (angelegt mit python vapi/deploy.py --job <stelle>):')?.trim();
+    if (!id) return;
+    if (!alle.some((s) => s.assistantId === id)) {
+      setNeue([...neue, { assistantId: id, stelle: '', unternehmen: '', aufgaben: '', anforderungen: '', einladenAb: 70, absageUnter: 45, kriterien: [leeresKriterium()], leitfaden: [leereFrage()] }]);
+    }
+    setAuswahl(id);
+  };
 
   useEffect(() => {
     setEntwurf(original ? structuredClone(original) : null);
@@ -68,13 +80,18 @@ export default function Konfiguration({ stellen, onGespeichert }: { stellen: Ste
     <section className="konfig">
       <div className="abschnitt-kopf">
         <h1>Konfiguration</h1>
-        <select value={auswahl} onChange={(e) => setAuswahl(e.target.value)} disabled={geaendert}>
-          {stellen.map((s) => (
-            <option key={s.assistantId} value={s.assistantId}>
-              {s.stelle}
-            </option>
-          ))}
-        </select>
+        <div className="auswahl">
+          <select value={auswahl} onChange={(e) => setAuswahl(e.target.value)} disabled={geaendert}>
+            {alle.map((s) => (
+              <option key={s.assistantId} value={s.assistantId}>
+                {s.stelle || `Neue Stelle (${s.assistantId.slice(0, 8)}…)`}
+              </option>
+            ))}
+          </select>
+          <button className="knopf zweit" onClick={neueStelle} disabled={geaendert}>
+            + Neue Stelle
+          </button>
+        </div>
       </div>
 
       <div className="panel">
