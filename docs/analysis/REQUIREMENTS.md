@@ -15,10 +15,11 @@ Eine vollständig fertige Automatisierung ist laut Aufgabe nicht Pflicht – der
 | Vapi            | Gespräch in Echtzeit (STT, LLM, TTS), Aufnahme, End-of-Call-Report per Webhook            |
 | n8n             | Alles nach dem Call: Webhook empfangen, Transkript, Analyse, Ablage, Slack-Versand        |
 | LLM (über n8n)  | Bewertung des Gesprächs, Erstellen des Bewerberprotokolls                                |
-| Ablage          | Protokolle und Transkripte in Google Sheets                                              |
+| Ablage          | n8n Data Tables: Stellen, Kriterien, Leitfaden, Protokolle                               |
+| UI              | React-Oberfläche im Docker-Container: Protokolle mit Live-Status, Konfiguration           |
 | Slack           | Benachrichtigung des HR Managers                                                         |
 
-**Keine eigene Benutzeroberfläche.** Gespräche werden über eine Telefonnummer oder – für die Demo – über das Vapi-Dashboard gestartet. Ergebnisse landen ausschließlich in Slack und in der Ablage.
+**Eigene Web-Oberfläche (seit 19.11.).** Bewerber erreichen den Agent per Telefon oder – für die Demo – über das Vapi-Dashboard. Für HR gibt es die Interview-UI (React, eigener Container): Protokolle mit Live-Status und die Konfiguration der Stellen. Die Protokolle kommen zusätzlich in Slack.
 
 ## Ablauf (Überblick)
 
@@ -26,11 +27,11 @@ Eine vollständig fertige Automatisierung ist laut Aufgabe nicht Pflicht – der
 2. Der Vapi Agent führt das Interview nach Leitfaden.
 3. Nach Call-Ende sendet Vapi den End-of-Call-Report an den Webhook von n8n.
 4. n8n prüft und extrahiert die Daten und lässt das **Bewerberprotokoll** per LLM erstellen.
-5. n8n speichert das Protokoll in Google Sheets und sendet die Zusammenfassung an den HR Manager in Slack.
+5. n8n speichert das Protokoll in der Data Table „Protokolle“ (sichtbar in der UI) und sendet es an den HR Manager in Slack.
 
 ```
 Webhook (Vapi) → IF: end-of-call-report? → Duplikat-Check (Call-ID) → Felder extrahieren
-  → AI: Analyse mit Structured Output Parser → Google Sheets → Slack: Nachricht an HR
+  → Status „wird erstellt“ → AI: Analyse mit Structured Output Parser → Data Table „Protokolle“ → Slack: Nachricht an HR
 
 Error Trigger → Slack: Fehlermeldung
 ```
@@ -75,7 +76,7 @@ Wenn alle Punkte abgedeckt sind, fasst der Agent die nächsten Schritte zusammen
 Definiertes Verhalten bei: längerer Stille, Voicemail, Verbindungsabbruch, unpassenden oder beleidigenden Äußerungen, Fragen, die der Agent nicht beantworten kann (z. B. Gehalt der Stelle → Verweis auf HR).
 
 **REQ-1.8 – Gesprächsstart: zwei Wege** `SHOULD`
-Ohne eigene UI ist das Telefon der einzige Zugang für echte Bewerber; das Vapi-Dashboard dient nur der Demo. Das Interview kann auf zwei Wegen starten:
+Für Bewerber ist das Telefon der einzige Zugang (die UI ist nur für HR); das Vapi-Dashboard dient nur der Demo. Das Interview kann auf zwei Wegen starten:
 
 - **Eingehend:** Der Bewerber ruft die Telefonnummer des Agents an.
 - **Ausgehend über Calendly:** Der Bewerber bucht einen Termin über Calendly. Zum Termin ruft der Agent ihn an (Calendly-Webhook → n8n → Vapi `POST /call` mit Assistant-ID, Telefonnummer und Bewerberdaten).
@@ -104,7 +105,7 @@ Konfiguriert und dokumentiert sind mindestens:
 - Idle- / Silence-Verhalten und maximale Gesprächsdauer
 
 **REQ-2.5 – Aufnahme** `SHOULD`
-Die Aufnahme des Calls ist aktiviert und in der Ablage verlinkt, damit HR das Gespräch bei Bedarf nachhören kann.
+Die Aufnahme des Calls ist aktiviert und in der Slack-Nachricht verlinkt, damit HR das Gespräch bei Bedarf nachhören kann.
 
 **REQ-2.6 – Konfiguration versioniert** `SHOULD`
 Die Assistant-Konfiguration liegt als Datei im Repository (z. B. JSON-Export oder per API angelegt), damit sie nachvollziehbar und reproduzierbar ist.
@@ -114,7 +115,7 @@ Die Assistant-Konfiguration liegt als Datei im Repository (z. B. JSON-Export ode
 ## F3 – n8n-Workflow (Orchestrierung)
 
 **REQ-3.1 – Erreichbarkeit** `MUST`
-n8n ist per HTTPS erreichbar, damit Vapi den Webhook aufrufen kann. Umsetzung: self-hosted per Docker auf Hetzner (Falkenstein, EU) hinter Caddy unter `n8n.mal-zeta.de`. Öffentlich sind nur `/webhook/*` und `/webhook-test/*`; UI, REST-API und MCP sind per IP-Allowlist beschränkt.
+n8n ist per HTTPS erreichbar, damit Vapi den Webhook aufrufen kann. Umsetzung: self-hosted per Docker auf Hetzner (Falkenstein, EU) hinter nginx (Let's-Encrypt-Zertifikat per certbot, automatische Verlängerung) unter `n8n.mal-zeta.de`. Öffentlich sind nur `/webhook/*` und `/webhook-test/*`; UI, REST-API und MCP sind per IP-Allowlist beschränkt.
 
 **REQ-3.2 – Webhook-Trigger** `MUST`
 Ein Webhook-Node (POST) startet den Workflow. Seine Production-URL ist in Vapi als Server URL eingetragen.
@@ -136,7 +137,7 @@ Die Stelle wird über die Assistant-ID zugeordnet (ein Assistant pro Stelle; fü
 Wird derselbe Report mehrfach zugestellt, entsteht nur ein Protokoll und eine Slack-Nachricht (Prüfung über die Call-ID).
 
 **REQ-3.8 – Ablage** `MUST`
-Pro Gespräch wird eine Zeile in **Google Sheets** mit Protokoll, Transkript und Aufnahme-Link gespeichert. Der Aufnahme-Link zeigt auf den Workflow „Vapi – Aufnahme abrufen“, weil Vapi nur 30 Minuten gültige Links ausgibt.
+Pro Gespräch eine Zeile in der n8n Data Table „Protokolle“ mit Status (läuft, beendet, wird erstellt, fertig), vollständigem Protokoll, Transkript und Aufnahme-Link; die UI zeigt sie an. Zusätzlich enthält die Slack-Nachricht in #bewerbungen das vollständige Protokoll, das Transkript folgt als Antworten im Thread. Der Aufnahme-Link zeigt auf den Workflow „Vapi – Aufnahme abrufen“, weil Vapi nur 30 Minuten gültige Links ausgibt.
 
 **REQ-3.9 – Error-Workflow** `SHOULD`
 Ein separater Workflow mit Error Trigger meldet fehlgeschlagene Ausführungen mit Call-ID in einem Slack-Channel. Kein Gespräch geht unbemerkt verloren.
@@ -155,11 +156,11 @@ _Hinweis für die Präsentation:_ Vapi bietet eine eigene Analyse an. Sie wird b
 **REQ-4.2 – Eingangsdaten** `MUST`
 Die Analyse nutzt das vollständige Transkript mit Sprecherzuordnung sowie die Metadaten aus REQ-3.6.
 
-**REQ-4.3 – Bewertungsschema aus Google Sheets** `MUST`
-Stellenprofil, Muss-Kriterien, Bewertungskriterien (Gewicht, Skala mit Stufenbeschreibungen) und Interview-Leitfaden werden in eigenen Tabs der Google-Tabelle gepflegt („Stellen“, „Bewertung“, „Leitfaden“) und je Assistant-ID dynamisch geladen. Leere Felder bekommen Standardwerte (z. B. Skala 1–5). Jedes Kriterium bekommt eine Stufe auf seiner Skala und eine kurze Begründung mit Bezug auf eine Aussage aus dem Gespräch. Gesamtscore (in %) und Empfehlung berechnet n8n nach den Regeln aus dem Tab „Stellen“. Details: [BEWERTUNG_UND_LEITFADEN.md](../design/BEWERTUNG_UND_LEITFADEN.md).
+**REQ-4.3 – Bewertungsschema aus n8n Data Tables** `MUST`
+Stellenprofil, Bewertungskriterien (Gewicht, Skala mit Stufenbeschreibungen) und Interview-Leitfaden liegen in den n8n Data Tables „Stellen“, „Kriterien“ und „Leitfaden“, werden in der UI gepflegt und je Assistant-ID dynamisch geladen. Leere Felder bekommen Standardwerte (z. B. Skala 1–5). Jedes Kriterium bekommt eine Stufe auf seiner Skala und eine kurze Begründung mit Bezug auf eine Aussage aus dem Gespräch. Gesamtscore (in %) und Empfehlung berechnet n8n nach den Regeln der Stelle. Details: [BEWERTUNG_UND_LEITFADEN.md](../design/BEWERTUNG_UND_LEITFADEN.md).
 
 **REQ-4.3a – Leitfaden-Sync nach Vapi** `SHOULD`
-Stellenfakten und Leitfaden aus der Tabelle werden per n8n-Workflow in den System-Prompt des Vapi-Assistants übernommen, ohne n8n-Aufruf während des Gesprächs. Der Workflow prüft jede Minute und schreibt nur bei Änderungen, eine Änderung in der Tabelle ist also nach spätestens einer Minute beim Agent. (Google Sheets kann n8n nicht von selbst benachrichtigen; ein sofortiger Push wäre nur per Apps Script in der Tabelle möglich.)
+Stellenfakten und Leitfaden werden nach jedem Speichern in der UI per n8n-Workflow in den System-Prompt des Vapi-Assistants übernommen (geschrieben wird nur bei einer Änderung), ohne n8n-Aufruf während des Gesprächs.
 
 **REQ-4.4 – Strukturiertes Protokoll** `MUST`
 Das Ergebnis folgt einem festen JSON-Schema (im Structured Output Parser hinterlegt) und enthält:
@@ -190,7 +191,7 @@ Abgebrochene oder zu kurze Gespräche werden erkannt (z. B. über Dauer und Grun
 Nach der Analyse sendet ein Slack-Node das Protokoll automatisch an den HR Manager (definierter Channel oder Direktnachricht).
 
 **REQ-5.2 – Inhalt** `MUST`
-Die Nachricht enthält: Name, Stelle, Datum, Dauer, Empfehlung, Gesamtscore, Zusammenfassung, Stärken / Schwächen und einen Link zum Eintrag in der Ablage (REQ-3.8).
+Die Nachricht ist das vollständige Protokoll (REQ-3.8): Name, Stelle, Datum, Dauer, Empfehlung, Gesamtscore, Zusammenfassung, Stärken / Schwächen, Scores mit Begründungen und Zitaten, angewandte Empfehlungsregel, Eckdaten, offene Punkte, Aufnahme-Link und Call-ID. Das Transkript steht im Thread.
 
 **REQ-5.3 – Formatierung** `SHOULD`
 Die Nachricht ist übersichtlich mit Slack Block Kit formatiert. Die Empfehlung ist auf einen Blick erkennbar. Die Nachricht ist rein informativ, ohne Buttons.
@@ -269,6 +270,19 @@ Berücksichtigt sind: EU-Region (z. B. `eu-central-1`) und Verfügbarkeit der Mo
 
 ---
 
+## F10 – Web-Oberfläche für HR (seit 2026-11-19)
+
+**REQ-10.1 – Protokolle mit Live-Status** `MUST`
+Die UI listet alle Gespräche, neueste zuerst, und aktualisiert sich alle 3 Sekunden. Status: „Anruf läuft“ mit mitlaufender Gesprächszeit, „Protokoll wird erstellt“, „fertig“ mit Empfehlung und Gesamtscore, „Fehler“. Hängt die Auswertung länger als 5 Minuten, weist die UI auf #n8n-fehler hin. Ein fertiges Protokoll zeigt Zusammenfassung, Scores mit Begründung und Zitat, angewandte Regel, Stärken, Schwächen, Eckdaten, offene Punkte, Aufnahme-Link und Transkript.
+
+**REQ-10.2 – Konfiguration** `MUST`
+Stelle, Kriterien (Gewicht mit Anteil in %, Stufen 1–5) und Leitfaden (Reihenfolge, Kriterium je Frage, Hinweis) werden in der UI bearbeitet. Speichern prüft die Eingaben, schreibt die Data Tables und überträgt Stelle und Leitfaden sofort in den Vapi-Prompt.
+
+**REQ-10.3 – Betrieb und Zugriff** `MUST`
+React-App als statische Seite in einem nginx-Container auf dem Hetzner-Server; der Container leitet `/api` im Docker-Netz an die n8n-Webhooks `/webhook/ui/*`. Vorerst HTTP auf Port 8080 und nur von der Admin-IP; DNS-Name, HTTPS und Login folgen. Die Webhooks `/webhook/ui/*` sind auf der öffentlichen Domain ebenfalls auf die Admin-IP beschränkt.
+
+---
+
 ## Nicht-funktionale Anforderungen
 
 **NFR-1 – Secrets** `MUST`
@@ -303,7 +317,7 @@ Die Kosten pro Gespräch (Vapi, STT, LLM, TTS) und für das Hosting von n8n sind
 
 ## Out of Scope
 
-- Eigene Benutzeroberfläche (Frontend, Dashboard, Web-Widget)
+- Web-Widget für Bewerber (Gespräch im Browser). Die HR-Oberfläche ist seit 19.11. umgesetzt (F10).
 - Interaktive Aktionen in Slack (Buttons wie „Einladen“ / „Absagen“)
 - Eigenes Backend außerhalb von n8n
 - Anbindung an ein Bewerbermanagementsystem (z. B. Personio)

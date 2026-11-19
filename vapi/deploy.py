@@ -12,7 +12,7 @@ Steps:
   5. Append newly created IDs (IDs only, never secrets) to .env.
   6. GET the assistant back and verify the stored config matches the payload.
 
-The prompt sections "# Stelle" and "# Leitfaden" are maintained in Google Sheets
+The prompt sections "# Stelle" and "# Leitfaden" are maintained in the UI (n8n Data Tables)
 and synced into Vapi by the n8n workflow "Vapi – Leitfaden synchronisieren". When
 updating an existing assistant, this script keeps the live versions of those
 sections; the text in system-prompt.md is only the initial value.
@@ -197,7 +197,7 @@ def load_prompt(variables: dict[str, str]) -> str:
     return text.strip() + "\n"
 
 
-# Sections synced from Google Sheets by n8n: (heading, next heading).
+# Sections synced from the n8n Data Tables by n8n: (heading, next heading).
 SYNCED_SECTIONS = [("# Stelle", "# Leitfaden"), ("# Leitfaden", "# Gesprächsregeln")]
 
 
@@ -405,7 +405,7 @@ def main() -> None:
     live_prompt = ""
     if assistant_id and "--reset-sections" not in args:
         live_prompt = live_system_prompt(api_key, assistant_id)
-        say("Abschnitte „Stelle“ und „Leitfaden“ werden aus dem Live-Assistant übernommen (Google-Sheets-Sync).")
+        say("Abschnitte „Stelle“ und „Leitfaden“ werden aus dem Live-Assistant übernommen (Sync aus der UI).")
 
     if "--verify" in args:
         if not assistant_id:

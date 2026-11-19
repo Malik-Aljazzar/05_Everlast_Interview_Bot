@@ -1,0 +1,891 @@
+[
+  {
+    "updatedAt": "2026-11-19T20:47:34.111Z",
+    "createdAt": "2026-11-19T20:47:00.306Z",
+    "id": "UoiiLcuq2OvVMPeC",
+    "name": "UI – API",
+    "description": "Webhooks für die Interview-UI: Protokolle mit Live-Status lesen, Konfiguration der Stellen lesen und speichern (n8n Data Tables), danach Vapi-Prompt synchronisieren.",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "eb8c35d2-4218-44c7-8edc-bdefba508112",
+        "name": "GET Protokolle",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "ui/protokolle",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "f9e4996d-7f86-4a1a-af3c-0b3e64c978ff"
+      },
+      {
+        "id": "cd4984ba-29bf-4cec-95d4-bddc7b868b2e",
+        "name": "Protokolle lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "2y2haOHWTjAEYQfS"
+          },
+          "returnAll": true,
+          "orderBy": true,
+          "orderByColumn": "createdAt",
+          "orderByDirection": "DESC"
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "id": "fad45689-b27f-422c-afe6-496c0ce49f75",
+        "name": "Protokolle als Liste",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Neueste zuerst; das gespeicherte Protokoll-JSON wird für die UI ausgepackt.\nconst lesen = (t) => { try { return t ? JSON.parse(t) : null; } catch (e) { return null; } };\nconst protokolle = $input.all().map((i) => i.json).filter((r) => r.callId).map((r) => ({ ...r, protokoll: lesen(r.protokoll) }));\nreturn [{ json: { protokolle, stand: new Date().toISOString() } }];"
+        }
+      },
+      {
+        "id": "a412fb84-e371-49d0-b61c-17abe6ac26aa",
+        "name": "Protokolle senden",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {}
+        }
+      },
+      {
+        "id": "54f3f66d-0be8-4959-9f36-82fbd8e188ee",
+        "name": "GET Config",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          224
+        ],
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "ui/config",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "5718e10d-cb2a-4d90-8c79-aae4043cafa8"
+      },
+      {
+        "id": "b0a7e774-a498-4e03-94f9-e783f001271e",
+        "name": "Stellen lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          224,
+          224
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "8xM8IZCVDEqUj0tt"
+          },
+          "returnAll": true
+        },
+        "executeOnce": true,
+        "alwaysOutputData": true
+      },
+      {
+        "id": "6cf6cfe8-6f26-4bcb-b22b-0bf00b525acf",
+        "name": "Kriterien lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          448,
+          224
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "wfqEsCqZ3WSd74DP"
+          },
+          "returnAll": true,
+          "orderBy": true,
+          "orderByColumn": "position",
+          "orderByDirection": "ASC"
+        },
+        "executeOnce": true,
+        "alwaysOutputData": true
+      },
+      {
+        "id": "56376e9e-4544-4f19-8066-48d274e998b2",
+        "name": "Leitfaden lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          672,
+          224
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "fZtKK4sQunxRZCnA"
+          },
+          "returnAll": true,
+          "orderBy": true,
+          "orderByColumn": "position",
+          "orderByDirection": "ASC"
+        },
+        "executeOnce": true,
+        "alwaysOutputData": true
+      },
+      {
+        "id": "5d746d80-9237-44ad-a5a9-255bc4b7a7d6",
+        "name": "Config bauen",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          896,
+          224
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Je Stelle: Stammdaten, Kriterien und Leitfaden in Reihenfolge (position).\nconst sauber = (r) => { const { id, createdAt, updatedAt, ...rest } = r; return rest; };\nconst alle = (name) => $(name).all().map((i) => i.json).filter((r) => r.assistantId).map(sauber);\nconst nachPosition = (a, b) => (Number(a.position) || 0) - (Number(b.position) || 0);\nconst kriterien = alle('Kriterien lesen');\nconst leitfaden = alle('Leitfaden lesen');\nconst stellen = alle('Stellen lesen').map((s) => ({\n  ...s,\n  kriterien: kriterien.filter((k) => k.assistantId === s.assistantId).sort(nachPosition),\n  leitfaden: leitfaden.filter((l) => l.assistantId === s.assistantId).sort(nachPosition),\n}));\nreturn [{ json: { stellen } }];"
+        }
+      },
+      {
+        "id": "ef625a4f-4539-49d3-97ba-45a620501a12",
+        "name": "Config senden",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          1120,
+          224
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {}
+        }
+      },
+      {
+        "id": "4d1da082-6508-4015-a0da-3e278266d6a7",
+        "name": "POST Config",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          544
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "ui/config",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "707f8803-91a7-4a66-93c6-2476e4b06c3a"
+      },
+      {
+        "id": "d392236c-a0e0-4308-8604-26a232110297",
+        "name": "Eingabe prüfen",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          544
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Prüft die Konfiguration einer Stelle aus der UI und bringt sie in die Form der Data Tables.\nconst b = $input.first().json.body ?? {};\nconst text = (v) => String(v ?? '').trim();\nconst zahl = (v) => {\n  if (v === '' || v === null || v === undefined) return null;\n  const n = Number(String(v).replace(',', '.'));\n  return Number.isFinite(n) ? n : null;\n};\nconst fehler = (meldung) => [{ json: { ok: false, fehler: meldung } }];\n\nconst id = text(b.assistantId);\nif (!id) return fehler('Assistant-ID fehlt.');\nconst s = b.stelle ?? {};\nif (!text(s.stelle)) return fehler('Die Bezeichnung der Stelle fehlt.');\n\nconst kriterien = (Array.isArray(b.kriterien) ? b.kriterien : []).filter((k) => text(k.kriterium)).map((k, i) => ({\n  assistantId: id,\n  position: i + 1,\n  kriterium: text(k.kriterium),\n  gewicht: zahl(k.gewicht),\n  beschreibung: text(k.beschreibung),\n  score1: text(k.score1),\n  score2: text(k.score2),\n  score3: text(k.score3),\n  score4: text(k.score4),\n  score5: text(k.score5),\n}));\n// Kriterium im Leitfaden immer in der Schreibweise des Kriteriums speichern.\nconst kanon = new Map(kriterien.map((k) => [k.kriterium.toLowerCase(), k.kriterium]));\nconst leitfaden = (Array.isArray(b.leitfaden) ? b.leitfaden : []).filter((l) => text(l.frage)).map((l, i) => ({\n  assistantId: id,\n  position: i + 1,\n  thema: text(l.thema) || 'Frage ' + (i + 1),\n  frage: text(l.frage),\n  kriterium: kanon.get(text(l.kriterium).toLowerCase()) ?? text(l.kriterium),\n  hinweis: text(l.hinweis),\n}));\nif (!kriterien.length) return fehler('Mindestens ein Bewertungskriterium ist nötig.');\nif (!leitfaden.length) return fehler('Der Leitfaden braucht mindestens eine Frage.');\n\nif (kanon.size !== kriterien.length) return fehler('Jedes Kriterium braucht einen eigenen Namen.');\nconst unbekannt = leitfaden.filter((l) => l.kriterium && !kanon.has(l.kriterium.toLowerCase()));\nif (unbekannt.length) return fehler('Der Leitfaden verweist auf ein unbekanntes Kriterium: ' + unbekannt.map((l) => l.kriterium).join(', '));\n\nconst einladenAb = zahl(s.einladenAb) ?? 70;\nconst absageUnter = zahl(s.absageUnter) ?? 45;\nif (absageUnter > einladenAb) return fehler('„Absage unter“ darf nicht über „Einladen ab“ liegen.');\n\nreturn [{ json: {\n  ok: true,\n  assistantId: id,\n  stelle: { assistantId: id, stelle: text(s.stelle), unternehmen: text(s.unternehmen), aufgaben: text(s.aufgaben), anforderungen: text(s.anforderungen), einladenAb, absageUnter },\n  kriterien,\n  leitfaden,\n} }];"
+        }
+      },
+      {
+        "id": "61fddf3b-65a1-41c6-9a02-4608a2687469",
+        "name": "Gültig?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          544
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.ok }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "71f53fdc-c868-4896-a0e1-08082f2e2472",
+        "name": "Alte Kriterien löschen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          672,
+          448
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "deleteRows",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "wfqEsCqZ3WSd74DP"
+          },
+          "matchType": "allConditions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "assistantId",
+                "condition": "eq",
+                "keyValue": "={{ $('Eingabe prüfen').first().json.assistantId }}"
+              }
+            ]
+          }
+        },
+        "executeOnce": true,
+        "alwaysOutputData": true
+      },
+      {
+        "id": "6ef57ab3-e97a-4776-a548-bedaba40d28f",
+        "name": "Alten Leitfaden löschen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          896,
+          448
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "deleteRows",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "fZtKK4sQunxRZCnA"
+          },
+          "matchType": "allConditions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "assistantId",
+                "condition": "eq",
+                "keyValue": "={{ $('Eingabe prüfen').first().json.assistantId }}"
+              }
+            ]
+          }
+        },
+        "executeOnce": true,
+        "alwaysOutputData": true
+      },
+      {
+        "id": "17f145ce-ac0c-4eef-9dbb-5fbae5d87a35",
+        "name": "Stelle speichern",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          1120,
+          448
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "upsert",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "8xM8IZCVDEqUj0tt"
+          },
+          "matchType": "allConditions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "assistantId",
+                "condition": "eq",
+                "keyValue": "={{ $('Eingabe prüfen').first().json.assistantId }}"
+              }
+            ]
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "matchingColumns": [],
+            "value": {
+              "assistantId": "={{ $('Eingabe prüfen').first().json.stelle.assistantId }}",
+              "stelle": "={{ $('Eingabe prüfen').first().json.stelle.stelle }}",
+              "unternehmen": "={{ $('Eingabe prüfen').first().json.stelle.unternehmen }}",
+              "aufgaben": "={{ $('Eingabe prüfen').first().json.stelle.aufgaben }}",
+              "anforderungen": "={{ $('Eingabe prüfen').first().json.stelle.anforderungen }}",
+              "einladenAb": "={{ $('Eingabe prüfen').first().json.stelle.einladenAb }}",
+              "absageUnter": "={{ $('Eingabe prüfen').first().json.stelle.absageUnter }}"
+            },
+            "schema": [
+              {
+                "id": "assistantId",
+                "displayName": "assistantId",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "stelle",
+                "displayName": "stelle",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "unternehmen",
+                "displayName": "unternehmen",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "aufgaben",
+                "displayName": "aufgaben",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "anforderungen",
+                "displayName": "anforderungen",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "einladenAb",
+                "displayName": "einladenAb",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "absageUnter",
+                "displayName": "absageUnter",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true
+              }
+            ]
+          },
+          "options": {}
+        },
+        "executeOnce": true
+      },
+      {
+        "id": "eb49d57d-857d-41c3-9163-7ba4aef58cec",
+        "name": "Kriterien-Zeilen",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1344,
+          448
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "return $('Eingabe prüfen').first().json.kriterien.map((k) => ({ json: k }));"
+        }
+      },
+      {
+        "id": "97aa22b4-18ce-458b-b274-3b04a8c8514e",
+        "name": "Kriterien einfügen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          1568,
+          448
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "insert",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "wfqEsCqZ3WSd74DP"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": null
+          }
+        }
+      },
+      {
+        "id": "6b9f64d6-fb01-4672-aee6-69ff1e8a4642",
+        "name": "Leitfaden-Zeilen",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1792,
+          448
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "return $('Eingabe prüfen').first().json.leitfaden.map((l) => ({ json: l }));"
+        }
+      },
+      {
+        "id": "123a4ed4-9597-4100-ad05-68f832912ff3",
+        "name": "Leitfaden einfügen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          2016,
+          448
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "insert",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "fZtKK4sQunxRZCnA"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": null
+          }
+        }
+      },
+      {
+        "id": "240ef724-686f-492b-ac68-36081568d6ac",
+        "name": "Vapi-Prompt synchronisieren",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.4,
+        "position": [
+          2240,
+          448
+        ],
+        "parameters": {
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "RGKss8vJmfN3nvF1"
+          },
+          "mode": "once",
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "executeOnce": true,
+        "onError": "continueRegularOutput",
+        "alwaysOutputData": true
+      },
+      {
+        "id": "c3465715-4b43-4f61-bbcd-b5aaa9f8d276",
+        "name": "Antwort bauen",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2464,
+          448
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const e = $('Eingabe prüfen').first().json;\nconst fehler = $input.all().map((i) => i.json.error).find(Boolean);\nreturn [{ json: { ok: true, assistantId: e.assistantId, kriterien: e.kriterien.length, fragen: e.leitfaden.length,\n  sync: fehler ? 'fehler' : 'ok', syncFehler: fehler ? String(fehler.message ?? fehler) : null } }];"
+        }
+      },
+      {
+        "id": "bfa63b83-832c-4c9b-8071-c84ca61fb4c3",
+        "name": "Gespeichert",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          2688,
+          448
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {}
+        }
+      },
+      {
+        "id": "0bb5f0e8-2ead-493a-85a6-dd21d131c920",
+        "name": "Ungültig",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          672,
+          640
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {
+            "responseCode": 400
+          }
+        }
+      }
+    ],
+    "connections": {
+      "GET Protokolle": {
+        "main": [
+          [
+            {
+              "node": "Protokolle lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Protokolle lesen": {
+        "main": [
+          [
+            {
+              "node": "Protokolle als Liste",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Protokolle als Liste": {
+        "main": [
+          [
+            {
+              "node": "Protokolle senden",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "GET Config": {
+        "main": [
+          [
+            {
+              "node": "Stellen lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Stellen lesen": {
+        "main": [
+          [
+            {
+              "node": "Kriterien lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Kriterien lesen": {
+        "main": [
+          [
+            {
+              "node": "Leitfaden lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leitfaden lesen": {
+        "main": [
+          [
+            {
+              "node": "Config bauen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Config bauen": {
+        "main": [
+          [
+            {
+              "node": "Config senden",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "POST Config": {
+        "main": [
+          [
+            {
+              "node": "Eingabe prüfen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Eingabe prüfen": {
+        "main": [
+          [
+            {
+              "node": "Gültig?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gültig?": {
+        "main": [
+          [
+            {
+              "node": "Alte Kriterien löschen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Ungültig",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Alte Kriterien löschen": {
+        "main": [
+          [
+            {
+              "node": "Alten Leitfaden löschen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Alten Leitfaden löschen": {
+        "main": [
+          [
+            {
+              "node": "Stelle speichern",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Stelle speichern": {
+        "main": [
+          [
+            {
+              "node": "Kriterien-Zeilen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Kriterien-Zeilen": {
+        "main": [
+          [
+            {
+              "node": "Kriterien einfügen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Kriterien einfügen": {
+        "main": [
+          [
+            {
+              "node": "Leitfaden-Zeilen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leitfaden-Zeilen": {
+        "main": [
+          [
+            {
+              "node": "Leitfaden einfügen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leitfaden einfügen": {
+        "main": [
+          [
+            {
+              "node": "Vapi-Prompt synchronisieren",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Vapi-Prompt synchronisieren": {
+        "main": [
+          [
+            {
+              "node": "Antwort bauen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Antwort bauen": {
+        "main": [
+          [
+            {
+              "node": "Gespeichert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true,
+      "errorWorkflow": "nZm9wPmSbW75hhOE",
+      "timezone": "Europe/Berlin",
+      "saveDataErrorExecution": "all",
+      "saveDataSuccessExecution": "none"
+    },
+    "staticData": null,
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    },
+    "nodeGroups": [
+      {
+        "id": "6f5e7444-44be-479c-ba0e-50222123132c",
+        "name": "Protokolle lesen",
+        "nodeIds": [
+          "cd4984ba-29bf-4cec-95d4-bddc7b868b2e",
+          "fad45689-b27f-422c-afe6-496c0ce49f75",
+          "a412fb84-e371-49d0-b61c-17abe6ac26aa"
+        ],
+        "description": "GET /webhook/ui/protokolle: alle Protokolle mit Status, neueste zuerst."
+      },
+      {
+        "id": "e3cd896e-79f1-49e8-a39f-1c9fe3d6784f",
+        "name": "Konfiguration lesen",
+        "nodeIds": [
+          "b0a7e774-a498-4e03-94f9-e783f001271e",
+          "6cf6cfe8-6f26-4bcb-b22b-0bf00b525acf",
+          "56376e9e-4544-4f19-8066-48d274e998b2",
+          "5d746d80-9237-44ad-a5a9-255bc4b7a7d6",
+          "ef625a4f-4539-49d3-97ba-45a620501a12"
+        ],
+        "description": "GET /webhook/ui/config: Stellen mit Kriterien und Leitfaden."
+      },
+      {
+        "id": "83b88574-95af-4058-9977-e2ab16105618",
+        "name": "Konfiguration speichern",
+        "nodeIds": [
+          "d392236c-a0e0-4308-8604-26a232110297",
+          "61fddf3b-65a1-41c6-9a02-4608a2687469",
+          "71f53fdc-c868-4896-a0e1-08082f2e2472",
+          "6ef57ab3-e97a-4776-a548-bedaba40d28f",
+          "17f145ce-ac0c-4eef-9dbb-5fbae5d87a35",
+          "eb49d57d-857d-41c3-9163-7ba4aef58cec",
+          "97aa22b4-18ce-458b-b274-3b04a8c8514e",
+          "6b9f64d6-fb01-4672-aee6-69ff1e8a4642",
+          "123a4ed4-9597-4100-ad05-68f832912ff3",
+          "240ef724-686f-492b-ac68-36081568d6ac",
+          "c3465715-4b43-4f61-bbcd-b5aaa9f8d276",
+          "bfa63b83-832c-4c9b-8071-c84ca61fb4c3",
+          "0bb5f0e8-2ead-493a-85a6-dd21d131c920"
+        ],
+        "description": "POST /webhook/ui/config: prüfen, Kriterien und Leitfaden der Stelle ersetzen, Vapi-Prompt synchronisieren."
+      }
+    ],
+    "pinData": null,
+    "versionId": "1e00ba8b-cdeb-4bff-a184-1bce9ec68998",
+    "activeVersionId": "1e00ba8b-cdeb-4bff-a184-1bce9ec68998",
+    "versionCounter": 3,
+    "triggerCount": 3,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-11-19T20:47:00.308Z",
+        "createdAt": "2026-11-19T20:47:00.308Z",
+        "role": "workflow:owner",
+        "workflowId": "UoiiLcuq2OvVMPeC",
+        "projectId": "vnJz6ISVsc7UjnAG",
+        "project": {
+          "updatedAt": "2026-11-15T11:46:40.140Z",
+          "createdAt": "2026-11-15T11:45:24.161Z",
+          "id": "vnJz6ISVsc7UjnAG",
+          "name": "Malik Aljazzar <malik.aljazzar@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "d72c5249-a99d-433b-bfb3-4c72b1365a36"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": "Antwort auch ohne Sync-Änderung",
+      "description": "Updated nodes: Vapi-Prompt synchronisieren"
+    }
+  }
+]

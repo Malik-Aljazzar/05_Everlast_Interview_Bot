@@ -4,42 +4,44 @@ Antwort auf Frage 1 der Mail: Wie wird das Gespräch bewertet und das Bewerberpr
 
 ## Prinzip
 
-- **Konfiguration statt Code:** Stellenprofil, Bewertungskriterien mit Skalen und der Interview-Leitfaden liegen in der Google-Tabelle „Everlast Bewerberprotokolle“. HR kann sie ändern, ohne n8n oder Vapi anzufassen. Alles ist über die **Assistant-ID** einer Stelle zugeordnet (ein Vapi-Assistant pro Stelle).
+- **Konfiguration statt Code:** Stellenprofil, Bewertungskriterien mit Skalen und der Interview-Leitfaden liegen in den n8n Data Tables „Stellen“, „Kriterien“ und „Leitfaden“ und werden in der Interview-UI gepflegt. HR kann sie ändern, ohne n8n oder Vapi anzufassen. Alles ist über die **Assistant-ID** einer Stelle zugeordnet (ein Vapi-Assistant pro Stelle).
 - **Gleiche Grundlage für Gespräch und Bewertung:** Der Leitfaden steuert, was der Agent fragt (Sync nach Vapi). Dieselben Zeilen sagen der Analyse, welche Frage welches Kriterium prüft.
-- **KI liefert Evidenz, Regeln entscheiden:** Claude bewertet jedes Kriterium mit Stufe, Begründung und Zitat. Gesamtscore und Empfehlung rechnet n8n deterministisch nach den Regeln aus der Tabelle. Die Entscheidung trifft HR.
+- **KI liefert Evidenz, Regeln entscheiden:** Claude bewertet jedes Kriterium mit Stufe, Begründung und Zitat. Gesamtscore und Empfehlung rechnet n8n deterministisch nach den Regeln der Stelle. Die Entscheidung trifft HR.
 
 ```
-Google Sheets                      n8n                                   Vapi
-┌──────────────┐  jede Minute,    ┌───────────────────────────┐  PATCH   ┌──────────────────┐
-│ Stellen      │──bei Änderung──► │ Leitfaden synchronisieren │────────► │ System-Prompt:   │
-│ Leitfaden    │                  └───────────────────────────┘          │ # Stelle         │
-│ Bewertung    │                                                         │ # Leitfaden      │
+Interview-UI (React)               n8n                                   Vapi
+┌──────────────┐  Speichern       ┌───────────────────────────┐  PATCH   ┌──────────────────┐
+│ Stellen      │────────────────► │ Leitfaden synchronisieren │────────► │ System-Prompt:   │
+│ Kriterien    │  (n8n Data       └───────────────────────────┘          │ # Stelle         │
+│ Leitfaden    │   Tables)                                               │ # Leitfaden      │
 └──────┬───────┘                                                         └────────┬─────────┘
-       │ je Call (Assistant-ID)   ┌───────────────────────────┐  End-of-Call-Report │
-       └────────────────────────► │ Bewerberinterview         │ ◄───────────────────┘
-                                  │ auswerten                 │──► Tab „Protokolle“ + Slack
+       │ je Call (Assistant-ID)   ┌───────────────────────────┐  Status-Updates,    │
+       └────────────────────────► │ Bewerberinterview         │ ◄─ End-of-Call-Report┘
+                                  │ auswerten                 │──► Protokolle (UI, Live-Status) + Slack
                                   └───────────────────────────┘
 ```
 
-## Die Tabs
+## Die Tabellen (n8n Data Tables, gepflegt in der UI)
+
+Bis 19.11. lag die Konfiguration in Google Sheets. Seitdem liegt alles in den Data Tables von n8n und wird in der Interview-UI bearbeitet (`ui/`, siehe [UI.md](UI.md)). Google Sheets ist komplett raus.
 
 ### Stellen (eine Zeile pro Stelle)
 
 | Spalte | Bedeutung | Standard, wenn leer |
 | --- | --- | --- |
-| Assistant-ID | ID des Vapi-Assistants dieser Stelle | Pflicht |
-| Stelle, Unternehmen, Aufgaben, Anforderungen | Stellenprofil. Listen mit Zeilenumbruch oder `;` trennen. Geht als Faktenbasis an den Agent und als Maßstab an die Analyse | – |
-| Muss-Kriterien | K.-o.-Kriterien, werden einzeln geprüft (ja / nein / unklar) | keine |
-| Einladen ab (%) / Absage unter (%) | Schwellen für die Empfehlung | 70 / 45 |
+| assistantId | ID des Vapi-Assistants dieser Stelle | Pflicht |
+| stelle, unternehmen, aufgaben, anforderungen | Stellenprofil. Listen mit Zeilenumbruch trennen. Geht als Faktenbasis an den Agent und als Maßstab an die Analyse | – |
+| einladenAb / absageUnter | Schwellen für die Empfehlung in % | 70 / 45 |
 
-### Bewertung (eine Zeile pro Kriterium)
+### Kriterien (eine Zeile pro Kriterium)
 
 | Spalte | Bedeutung | Standard, wenn leer |
 | --- | --- | --- |
-| Kriterium | Name, erscheint so im Protokoll | Pflicht |
-| Gewicht | relatives Gewicht, wird auf 100 % normiert | Durchschnitt der übrigen Gewichte |
-| Was wird bewertet | kurze Beschreibung | Name des Kriteriums |
-| Score 1 … Score N | Beschreibung jeder Stufe. **Die gefüllten Spalten legen die Skala fest** (z. B. nur Score 1–3 → Skala 1–3) | keine gefüllt → Standardskala 1–5; einzelne Lücken → Standardtext der Stufe |
+| assistantId, position | Stelle und Reihenfolge | Pflicht |
+| kriterium | Name, erscheint so im Protokoll | Pflicht |
+| gewicht | relatives Gewicht, wird auf 100 % normiert (die UI zeigt den Anteil an) | Durchschnitt der übrigen Gewichte |
+| beschreibung | was bewertet wird | Name des Kriteriums |
+| score1 … score5 | Beschreibung jeder Stufe. **Die gefüllten Stufen legen die Skala fest** (z. B. nur 1–3 → Skala 1–3) | keine gefüllt → Standardskala 1–5; einzelne Lücken → Standardtext der Stufe |
 
 Stand 19.11., jeweils mit beschriebenen Stufen 1–5:
 
@@ -48,15 +50,15 @@ Stand 19.11., jeweils mit beschriebenen Stufen 1–5:
 
 Gehalt, Startdatum und Verfügbarkeit sind bewusst **kein** Kriterium: Sie stehen als Eckdaten im Protokoll, senken aber nicht den Score.
 
-### Leitfaden (eine Zeile pro Frage, in Gesprächsreihenfolge)
+### Leitfaden (eine Zeile pro Frage)
 
-Die Reihenfolge der Zeilen ist die Reihenfolge im Gespräch. Umsortieren = Zeilen verschieben.
+`position` ist die Reihenfolge im Gespräch; in der UI per Pfeil verschoben.
 
 | Spalte | Bedeutung |
 | --- | --- |
-| Thema, Frage | wird dem Agent so vorgegeben – alle Bewerber bekommen dieselben Kernfragen (strukturiertes Interview) |
-| Kriterium | welches Bewertungskriterium die Frage prüft |
-| Hinweis | Verhalten und Nachfragen für den Agent |
+| thema, frage | wird dem Agent so vorgegeben – alle Bewerber bekommen dieselben Kernfragen (strukturiertes Interview) |
+| kriterium | welches Bewertungskriterium die Frage prüft (Auswahl aus den Kriterien der Stelle) |
+| hinweis | Verhalten und Nachfragen für den Agent |
 
 Jedes Kriterium wird von mindestens einer Frage abgedeckt; Kommunikation wird über das ganze Gespräch bewertet.
 
@@ -70,11 +72,11 @@ Jedes Kriterium wird von mindestens einer Frage abgedeckt; Kommunikation wird ü
 
 ## Ablauf der Bewertung (Workflow „Vapi – Bewerberinterview auswerten“)
 
-1. **Report prüfen:** nur `end-of-call-report`, jede Call-ID nur einmal.
-2. **Bewertungsgrundlage laden:** Stelle, Kriterien und Leitfaden zur Assistant-ID aus der Tabelle; Standardwerte für leere Felder. Fehlt die Stelle, bricht der Workflow ab und meldet das in #n8n-fehler.
+0. **Live-Status:** Vapi meldet per `status-update` Start und Ende des Anrufs; die Tabelle „Protokolle“ zeigt „läuft“ bzw. „beendet“, die UI zählt die Gesprächszeit mit.
+1. **Report prüfen:** nur `end-of-call-report`, jede Call-ID nur einmal. Status „wird erstellt“.
+2. **Bewertungsgrundlage laden:** Stelle, Kriterien und Leitfaden zur Assistant-ID aus den Data Tables; Standardwerte für leere Felder. Fehlt die Stelle, bricht der Workflow ab und meldet das in #n8n-fehler.
 3. **KI-Analyse (Claude Opus 5.5)** nach festem JSON-Schema:
    - pro Kriterium: Stufe auf dessen Skala, Begründung mit Bezug auf die Stufenbeschreibung, wörtliches Zitat; „nicht beurteilbar“, wenn das Thema nicht vorkam
-   - Muss-Kriterien: ja / nein / unklar mit Begründung
    - Status: vollständig / unvollständig / keine Einwilligung
    - Stärken, Schwächen, schwerwiegende Red Flag, Eckdaten, offene Punkte, Einschätzung
 4. **Gesamtscore (n8n):** jede Stufe auf 0–100 % ihrer Skala normiert, nach Gewicht gemittelt. Nicht beurteilbare Kriterien zählen nicht.
@@ -86,11 +88,13 @@ Jedes Kriterium wird von mindestens einer Frage abgedeckt; Kommunikation wird ü
 | Gesamtscore ≥ „Einladen ab“ | Einladen |
 | Gesamtscore < „Absage unter“ | Absage |
 | dazwischen | Prüfen |
-| Muss-Kriterium „nein“ oder schwerwiegende Red Flag | höchstens Prüfen |
+| schwerwiegende Red Flag | höchstens Prüfen |
 
-6. **Protokoll:** Zeile im Tab „Protokolle“ (inkl. Begründungen, angewandter Regel, Transkript, Aufnahme) und Slack-Nachricht in #bewerbungen mit Link zur Zeile.
+6. **Protokoll:** in der Data Table „Protokolle“ (Status „fertig“, strukturiertes JSON, Transkript, Aufnahme-Link), angezeigt in der UI. Zusätzlich enthält die Slack-Nachricht in #bewerbungen das vollständige Protokoll: Empfehlung, Scores mit Begründungen und Zitaten, angewandte Regel, Einschätzung, Eckdaten, offene Punkte, Aufnahme-Link und Call-ID. Das Transkript folgt als Antworten im Thread.
 
-**Beispiel (Testlauf):** Fachliche Eignung 4/5, Motivation 4/5, Kommunikation 4/5, Zusammenarbeit 3/5 → 0,75·40 + 0,75·20 + 0,75·20 + 0,5·20 = **70 %** → „Gesamtscore 70 % ≥ 70 % → Einladen“, alle Muss-Kriterien erfüllt.
+Muss-Kriterien (K.-o.-Kriterien mit ja / nein / unklar) gab es bis 19.11.; sie sind entfallen, die Bewertung läuft nur über die gewichteten Kriterien.
+
+**Beispiel (Testlauf):** Fachliche Eignung 4/5, Motivation 4/5, Kommunikation 4/5, Zusammenarbeit 3/5 → 0,75·40 + 0,75·20 + 0,75·20 + 0,5·20 = **70 %** → „Gesamtscore 70 % ≥ 70 % → Einladen“ (Testlauf vom 15.11. mit den damaligen vier Kriterien).
 
 ## Fairness und Nachvollziehbarkeit
 
@@ -102,6 +106,6 @@ Jedes Kriterium wird von mindestens einer Frage abgedeckt; Kommunikation wird ü
 
 ## Grenzen
 
-- Das Stellenprofil im Tab „Stellen“ ist eine **Annahme** und sollte durch die echte Stellenanzeige ersetzt werden.
+- Das Stellenprofil der Stellen ist eine **Annahme** und sollte durch die echte Stellenanzeige ersetzt werden.
 - LLM-Bewertungen können leicht schwanken. In zwei Testläufen mit demselben Transkript waren die Scores identisch; belastbar ist das erst mit mehr Läufen. Für den Produktivbetrieb: Stichproben von HR gegenprüfen lassen.
 - Die Qualität hängt am Transkript: schlechte Verbindung → unvollständige Bewertung (wird als „Prüfen“ markiert).

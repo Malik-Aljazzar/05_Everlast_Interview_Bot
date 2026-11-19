@@ -13,3 +13,7 @@ __pycache__/
 
 # Presentation
 presentation/
+# UI
+ui/node_modules/
+ui/dist/
+ui/*.tsbuildinfo

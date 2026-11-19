@@ -1,10 +1,10 @@
 [
   {
-    "updatedAt": "2026-11-19T18:33:55.678Z",
+    "updatedAt": "2026-11-19T20:42:41.927Z",
     "createdAt": "2026-11-15T13:51:48.146Z",
     "id": "RGKss8vJmfN3nvF1",
     "name": "Vapi – Leitfaden synchronisieren",
-    "description": "Übernimmt Stellenfakten (Tab „Stellen“) und Interview-Leitfaden (Tab „Leitfaden“) aus Google Sheets in den System-Prompt der Vapi-Assistants. Prüft jede Minute und schreibt nur bei Änderungen; manuell startbar.",
+    "description": "Übernimmt Stellenfakten und Interview-Leitfaden aus den n8n Data Tables in den System-Prompt der Vapi-Assistants. Wird nach jedem Speichern in der UI aufgerufen und schreibt nur bei Änderungen; manuell startbar.",
     "active": true,
     "isArchived": false,
     "nodes": [
@@ -20,97 +20,6 @@
         "parameters": {}
       },
       {
-        "id": "c9af2e2c-6b3c-4f1b-a142-2d7c2fa5d6f2",
-        "name": "Stellen lesen",
-        "type": "n8n-nodes-base.googleSheets",
-        "typeVersion": 4.7,
-        "position": [
-          260,
-          300
-        ],
-        "parameters": {
-          "resource": "sheet",
-          "operation": "read",
-          "authentication": "serviceAccount",
-          "documentId": {
-            "__rl": true,
-            "mode": "id",
-            "value": "1Wx4lcM86H-tjIn-QIrrxWEWlgSUsUUfNn2TZr_n4CIA"
-          },
-          "sheetName": {
-            "__rl": true,
-            "mode": "name",
-            "value": "Stellen"
-          },
-          "options": {}
-        },
-        "credentials": {
-          "googleApi": {
-            "id": "hlfvlSOAGLMPNEqV",
-            "name": "Google Sheets Service Account"
-          }
-        },
-        "retryOnFail": true,
-        "maxTries": 3,
-        "waitBetweenTries": 5000
-      },
-      {
-        "id": "26062e92-7962-49c6-bb7f-66bf1214560c",
-        "name": "Jede Minute prüfen",
-        "type": "n8n-nodes-base.scheduleTrigger",
-        "typeVersion": 1.4,
-        "position": [
-          0,
-          420
-        ],
-        "parameters": {
-          "rule": {
-            "interval": [
-              {
-                "field": "minutes",
-                "minutesInterval": 1
-              }
-            ]
-          }
-        }
-      },
-      {
-        "id": "6782752d-ba99-4279-b64d-223052b561bb",
-        "name": "Leitfaden lesen",
-        "type": "n8n-nodes-base.googleSheets",
-        "typeVersion": 4.7,
-        "position": [
-          500,
-          300
-        ],
-        "parameters": {
-          "resource": "sheet",
-          "operation": "read",
-          "authentication": "serviceAccount",
-          "documentId": {
-            "__rl": true,
-            "mode": "id",
-            "value": "1Wx4lcM86H-tjIn-QIrrxWEWlgSUsUUfNn2TZr_n4CIA"
-          },
-          "sheetName": {
-            "__rl": true,
-            "mode": "name",
-            "value": "Leitfaden"
-          },
-          "options": {}
-        },
-        "credentials": {
-          "googleApi": {
-            "id": "hlfvlSOAGLMPNEqV",
-            "name": "Google Sheets Service Account"
-          }
-        },
-        "executeOnce": true,
-        "retryOnFail": true,
-        "maxTries": 3,
-        "waitBetweenTries": 5000
-      },
-      {
         "id": "a4f5d1d1-706f-4a9d-8c31-c729397afbbc",
         "name": "Prompt-Abschnitte bauen",
         "type": "n8n-nodes-base.code",
@@ -122,7 +31,7 @@
         "parameters": {
           "mode": "runOnceForAllItems",
           "language": "javaScript",
-          "jsCode": "// Baut je Stelle (Assistant-ID) die Prompt-Abschnitte \"Stelle\" und \"Leitfaden\" für Vapi.\nconst liste = (text) => String(text ?? '').split(/\\n|;/).map((s) => s.trim()).filter(Boolean);\nconst unterpunkte = (text) => liste(text).map((x) => '  - ' + x);\n\nconst leitfaden = $('Leitfaden lesen').all().map((i) => i.json).filter((r) => r['Assistant-ID'] && r.Frage);\nconst stellen = $('Stellen lesen').all().map((i) => i.json).filter((r) => r['Assistant-ID']);\n\nreturn stellen.map((s) => {\n  const id = String(s['Assistant-ID']).trim();\n  // Reihenfolge = Zeilenreihenfolge im Tab.\n  const fragen = leitfaden.filter((l) => String(l['Assistant-ID']).trim() === id);\n\n  const abschnittStelle = [\n    'Nur diese Fakten darfst du nennen:',\n    '',\n    '- Stelle: ' + s.Stelle,\n    '- Unternehmen: ' + (s.Unternehmen ?? ''),\n    '- Aufgaben:',\n    ...unterpunkte(s.Aufgaben),\n    '- Anforderungen:',\n    ...unterpunkte(s.Anforderungen),\n    '',\n    'Alles andere weißt du nicht, zum Beispiel Gehalt der Stelle, Benefits, Homeoffice oder Remote, Arbeitszeiten, Team, Kunden, Ablauf und Dauer des Bewerbungsprozesses. Erfinde dazu nichts. Sag ehrlich, dass du das nicht weißt und das HR-Team die Frage beantwortet.',\n  ].join('\\n');\n\n  const schritte = fragen.map((f, i) =>\n    (i + 1) + '. ' + f.Thema + ': „' + String(f.Frage).trim() + '“' + (String(f.Hinweis ?? '').trim() ? ' ' + String(f.Hinweis).trim() : '')\n  );\n  schritte.push((fragen.length + 1) + '. Abschluss: siehe unten.');\n  const abschnittLeitfaden = [\n    'Arbeite die Punkte in dieser Reihenfolge ab. Stell die Fragen sinngemäß so wie hier, damit alle Bewerber dieselben Kernfragen bekommen.',\n    '',\n    ...schritte,\n  ].join('\\n');\n\n  return { json: { assistantId: id, stelle: s.Stelle, anzahlFragen: fragen.length, abschnittStelle, abschnittLeitfaden } };\n});"
+          "jsCode": "// Baut je Stelle (Assistant-ID) aus den Data Tables die Prompt-Abschnitte \"Stelle\" und \"Leitfaden\" für Vapi.\nconst liste = (text) => String(text ?? '').split(/\\n|;/).map((s) => s.trim()).filter(Boolean);\nconst unterpunkte = (text) => liste(text).map((x) => '  - ' + x);\n\nconst nachPosition = (a, b) => (Number(a.position) || 0) - (Number(b.position) || 0);\nconst leitfaden = $('Leitfaden lesen').all().map((i) => i.json).filter((r) => r.assistantId && r.frage);\nconst stellen = $('Stellen lesen').all().map((i) => i.json).filter((r) => r.assistantId);\n\nreturn stellen.map((s) => {\n  const id = String(s.assistantId).trim();\n  // Reihenfolge = Spalte position (in der UI per Drag & Drop bzw. Pfeilen festgelegt).\n  const fragen = leitfaden.filter((l) => String(l.assistantId).trim() === id).sort(nachPosition);\n\n  const abschnittStelle = [\n    'Nur diese Fakten darfst du nennen:',\n    '',\n    '- Stelle: ' + s.stelle,\n    '- Unternehmen: ' + (s.unternehmen ?? ''),\n    '- Aufgaben:',\n    ...unterpunkte(s.aufgaben),\n    '- Anforderungen:',\n    ...unterpunkte(s.anforderungen),\n    '',\n    'Alles andere weißt du nicht, zum Beispiel Gehalt der Stelle, Benefits, Homeoffice oder Remote, Arbeitszeiten, Team, Kunden, Ablauf und Dauer des Bewerbungsprozesses. Erfinde dazu nichts. Sag ehrlich, dass du das nicht weißt und das HR-Team die Frage beantwortet.',\n  ].join('\\n');\n\n  const schritte = fragen.map((f, i) =>\n    (i + 1) + '. ' + f.thema + ': „' + String(f.frage).trim() + '“' + (String(f.hinweis ?? '').trim() ? ' ' + String(f.hinweis).trim() : '')\n  );\n  schritte.push((fragen.length + 1) + '. Abschluss: siehe unten.');\n  const abschnittLeitfaden = [\n    'Arbeite die Punkte in dieser Reihenfolge ab. Stell die Fragen sinngemäß so wie hier, damit alle Bewerber dieselben Kernfragen bekommen.',\n    '',\n    ...schritte,\n  ].join('\\n');\n\n  return { json: { assistantId: id, stelle: s.stelle, anzahlFragen: fragen.length, abschnittStelle, abschnittLeitfaden } };\n});"
         }
       },
       {
@@ -259,47 +168,78 @@
           -60
         ],
         "parameters": {
-          "content": "## Vapi – Leitfaden synchronisieren\nHR pflegt Stellenfakten (Tab „Stellen“) und Interviewfragen (Tab „Leitfaden“) in Google Sheets. Der Workflow prüft jede Minute, ob sich daraus ein anderer Prompt ergibt, und schreibt nur dann in die Abschnitte „# Stelle“ und „# Leitfaden“ des Vapi-System-Prompts. Änderungen in der Tabelle sind so nach spätestens einer Minute beim Agent. Kein n8n-Aufruf während des Gesprächs, also keine Zusatzlatenz.",
+          "content": "## Vapi – Leitfaden synchronisieren\nHR pflegt Stellenfakten und Interviewfragen in der UI (n8n Data Tables „Stellen“ und „Leitfaden“). Nach jedem Speichern ruft die UI-API diesen Workflow auf. Er baut daraus die Abschnitte „# Stelle“ und „# Leitfaden“ des Vapi-System-Prompts und schreibt nur bei einer Änderung. Kein n8n-Aufruf während des Gesprächs, also keine Zusatzlatenz.",
           "color": 7,
           "width": 700,
           "height": 200
         }
+      },
+      {
+        "id": "729cb22c-a890-4947-a0de-1b022cca1c07",
+        "name": "Aufruf aus UI",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          0,
+          420
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "a4fd4467-55f8-4bca-ba4d-20ec655d5531",
+        "name": "Stellen lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          260,
+          300
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "8xM8IZCVDEqUj0tt"
+          },
+          "returnAll": true
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "executeOnce": true
+      },
+      {
+        "id": "7c933437-19f5-4696-949a-47cd19fc94c1",
+        "name": "Leitfaden lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          500,
+          300
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "fZtKK4sQunxRZCnA"
+          },
+          "returnAll": true,
+          "orderBy": true,
+          "orderByColumn": "position",
+          "orderByDirection": "ASC"
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "executeOnce": true
       }
     ],
     "connections": {
-      "Jetzt synchronisieren": {
-        "main": [
-          [
-            {
-              "node": "Stellen lesen",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Stellen lesen": {
-        "main": [
-          [
-            {
-              "node": "Leitfaden lesen",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Leitfaden lesen": {
-        "main": [
-          [
-            {
-              "node": "Prompt-Abschnitte bauen",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
       "Prompt-Abschnitte bauen": {
         "main": [
           [
@@ -344,11 +284,44 @@
           ]
         ]
       },
-      "Jede Minute prüfen": {
+      "Jetzt synchronisieren": {
         "main": [
           [
             {
               "node": "Stellen lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aufruf aus UI": {
+        "main": [
+          [
+            {
+              "node": "Stellen lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Stellen lesen": {
+        "main": [
+          [
+            {
+              "node": "Leitfaden lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leitfaden lesen": {
+        "main": [
+          [
+            {
+              "node": "Prompt-Abschnitte bauen",
               "type": "main",
               "index": 0
             }
@@ -392,8 +365,6 @@
         "id": "3257dfb3-86a8-43a4-8bd0-df6cb3aa2bc0",
         "name": "Tabelle lesen",
         "nodeIds": [
-          "c9af2e2c-6b3c-4f1b-a142-2d7c2fa5d6f2",
-          "6782752d-ba99-4279-b64d-223052b561bb",
           "a4f5d1d1-706f-4a9d-8c31-c729397afbbc"
         ],
         "description": "Stellen und Leitfaden aus Google Sheets lesen und je Assistant die Prompt-Abschnitte bauen."
@@ -411,10 +382,10 @@
       }
     ],
     "pinData": null,
-    "versionId": "0b9c181f-c511-46b9-8f3c-57649ae2bb33",
-    "activeVersionId": "0b9c181f-c511-46b9-8f3c-57649ae2bb33",
-    "versionCounter": 8,
-    "triggerCount": 1,
+    "versionId": "bdb3824c-546e-484c-bdf5-921f100a4bca",
+    "activeVersionId": "bdb3824c-546e-484c-bdf5-921f100a4bca",
+    "versionCounter": 9,
+    "triggerCount": 0,
     "sourceWorkflowId": null,
     "tags": [],
     "shared": [
@@ -438,8 +409,8 @@
       }
     ],
     "versionMetadata": {
-      "name": "Wiederholung bei Netzwerkfehlern",
-      "description": "Sheets- und Vapi-Aufrufe versuchen es bei Fehlern bis zu 3-mal, damit kurze DNS-Ausfälle (16.11., EAI_AGAIN) keine Fehlermeldungen in #n8n-fehler auslösen."
+      "name": "Data Tables statt Google Sheets, Aufruf aus der UI",
+      "description": "Liest Stellen und Leitfaden aus den n8n Data Tables (Reihenfolge über position). Startet nach dem Speichern in der UI (Execute Workflow Trigger) statt jede Minute; manuell startbar."
     }
   }
 ]

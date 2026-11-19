@@ -176,7 +176,8 @@
 
   "_server": "Webhook URL and X-Vapi-Secret credential are set in the Vapi org settings, not here: dashboard tests send the assistant as assistantOverrides and Vapi withholds the credential of a server given there. null removes a server stored earlier. See VAPI_CONFIG.md section 4.",
   "server": null,
-  "serverMessages": ["end-of-call-report"],
+  "_serverMessages": "end-of-call-report for the evaluation, status-update (call started / ended) for the live status in the UI.",
+  "serverMessages": ["end-of-call-report", "status-update"],
 
   "artifactPlan": {
     "recordingEnabled": true,

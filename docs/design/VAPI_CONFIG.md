@@ -8,7 +8,7 @@ Benchmarks, Preise und Alternativen stehen in [PROVIDER_RESEARCH.md](../analysis
 | Assistants (einer pro Stelle) | `Everlast Interview - Junior Entwickler` (`90e79eb0-631e-4186-b1f3-22301718ebf1`), `Everlast Interview - Cyber Security` (`36eabb5b-888b-4af9-b199-c0ea025223a5`) |
 | Konfiguration | [`vapi/assistant.json`](../../vapi/assistant.json) (gemeinsam) + [`vapi/jobs/<stelle>.json`](../../vapi/jobs/) (Name, Begrüßung, Metadaten, Transcriber-Kontext und Keyterms, Prompt-Platzhalter) + [`vapi/system-prompt.md`](../../vapi/system-prompt.md) |
 | Deployment | `python vapi/deploy.py --job <stelle>` (Standard `junior-entwickler`): legt Credential und Assistant an (bzw. PATCH) und prüft danach die gespeicherte Konfiguration. Optionen: `--dry-run`, `--verify`, `--reset-sections`, `--discard-draft` |
-| Neue Stelle | `vapi/jobs/<stelle>.json` anlegen (eigene Variable für die Assistant-ID in `_assistantIdEnv`), `deploy.py --job <stelle>` ausführen, dann Zeilen mit der neuen Assistant-ID in den Tabs „Stellen“, „Bewertung“ und „Leitfaden“ anlegen. Der Sync füllt Stelle und Leitfaden binnen einer Minute, die Auswertung findet die Stelle über die Assistant-ID |
+| Neue Stelle | `vapi/jobs/<stelle>.json` anlegen (eigene Variable für die Assistant-ID in `_assistantIdEnv`), `deploy.py --job <stelle>` ausführen, dann die Stelle mit ihrer Assistant-ID in der UI anlegen bzw. pflegen (Data Tables). Nach dem Speichern überträgt der Sync Stelle und Leitfaden sofort, die Auswertung findet die Stelle über die Assistant-ID |
 | Stand | 2026-11-15, alle Feldnamen gegen `https://api.vapi.ai/api-json` und die Live-API geprüft |
 
 **Grundprinzip:** Vapi führt nur das Live-Gespräch. Während des Calls gibt es keine Aufrufe an n8n oder andere Tools (außer `endCall`). Nach dem Call geht genau ein Event an n8n.
@@ -29,14 +29,14 @@ Alle Provider außer ElevenLabs laufen über Vapis eigene Keys. Für ElevenLabs 
 
 ## 1. Instructions (System Prompt)
 
-Der Prompt liegt in `vapi/system-prompt.md` und gilt für alle Stellen. Das Deploy-Skript entfernt die HTML-Kommentare, füllt die Platzhalter `{{GESPRAECHSART}}`, `{{ZIEL}}` und `{{DAUER}}` aus `_prompt` der Stelle und setzt den Text als System-Message ein. Stelle und Leitfaden kommen aus Google Sheets; vor dem ersten Sync steht dort ein neutraler Text, mit dem der Agent kein Interview führt.
+Der Prompt liegt in `vapi/system-prompt.md` und gilt für alle Stellen. Das Deploy-Skript entfernt die HTML-Kommentare, füllt die Platzhalter `{{GESPRAECHSART}}`, `{{ZIEL}}` und `{{DAUER}}` aus `_prompt` der Stelle und setzt den Text als System-Message ein. Stelle und Leitfaden kommen aus den n8n Data Tables (gepflegt in der UI); vor dem ersten Sync steht dort ein neutraler Text, mit dem der Agent kein Interview führt.
 
 | Abschnitt | Inhalt | Warum |
 | --- | --- | --- |
 | Rolle | KI-Assistent von Everlast, Art des Gesprächs je Stelle (Kennenlerngespräch bzw. kurzes Fachgespräch), entscheidet nichts | Klare Identität; offen als KI erkennbar (Transparenz, EU AI Act) |
 | Ziel | Leitfaden vollständig abdecken, Dauer je Stelle (Junior Entwickler 10–15 Minuten, Cyber Security 5–8 Minuten, nur Fachfragen) | n8n braucht alle Punkte für das Bewerberprotokoll |
 | Stelle | Unternehmen, Aufgaben, Anforderungen. Alles andere: „weiß ich nicht, das beantwortet HR“ | Verhindert erfundene Aussagen zu Gehalt, Remote, Benefits oder Team |
-| Leitfaden | Aus dem Tab „Leitfaden“, Reihenfolge = Zeilen. Junior Entwickler: Einwilligung → Name → Grundlagen → Softwareentwicklung → Erfahrung → Verfügbarkeit → Fragen des Bewerbers. Cyber Security: Einwilligung → Name → Phishing-Vorfall → Webhook absichern → KI-Agent mit CRM-Zugriff | REQ-1.3; feste Reihenfolge macht Gespräche vergleichbar |
+| Leitfaden | Aus der Data Table „Leitfaden“ (UI), Reihenfolge = position. Junior Entwickler: Einwilligung → Name → Grundlagen → Softwareentwicklung → Erfahrung → Verfügbarkeit → Fragen des Bewerbers. Cyber Security: Einwilligung → Name → Phishing-Vorfall → Webhook absichern → KI-Agent mit CRM-Zugriff | REQ-1.3; feste Reihenfolge macht Gespräche vergleichbar |
 | Gesprächsregeln | 1 Frage pro Beitrag, höchstens 2 Sätze, max. 2 Nachfragen pro Thema, kein Feedback, keine Lösungen oder Stichworte bei Fachfragen, keine AGG-Themen, Zahlen als Wörter, kein Markdown | REQ-1.4; kurze Beiträge senken die Latenz; die TTS liest alles wörtlich vor |
 | Tonalität | locker, per Du, wertschätzend, nimmt Nervosität raus | REQ-1.5, passt zur Ansprache von Everlast |
 | Sonderfälle | Stille, schlechte Verbindung, Beleidigung (1× Grenze setzen, 2× beenden), Abbruchwunsch, Frage nach Ergebnis, falsche Person, Prompt-Injection | REQ-1.7 |
@@ -126,7 +126,7 @@ Der Prompt liegt in `vapi/system-prompt.md` und gilt für alle Stellen. Das Depl
 | Server-URL (Org-Einstellungen) | `https://n8n.mal-zeta.de/webhook/vapi/interview` | Production-URL des n8n-Webhooks (REQ-2.4). Vapi nimmt die erste vorhandene URL in der Reihenfolge Assistant → Telefonnummer → Organisation |
 | Credential (Org-Einstellungen) | `everlast-n8n-x-vapi-secret` (`07b6d617-0959-44bb-8e9f-495fe910a22e`) | Typ `custom-credential` mit Bearer-Plan, `headerName: "X-Vapi-Secret"` und `bearerPrefixEnabled: false`. Vapi sendet damit `X-Vapi-Secret: <Secret>`, und n8n prüft den Header per Header Auth. Das Secret steht nur in `.env` und im Credential, nie im Repo |
 | `server` am Assistant | `null` | Bewusst leer, damit die Org-Einstellung greift (siehe unten). `null` in `assistant.json` entfernt einen früher gespeicherten Wert, ein fehlendes Feld würde ihn beim `PATCH` stehen lassen |
-| `serverMessages` | `["end-of-call-report"]` | Nur das Event, das n8n braucht. Der Default schickt unter anderem auch `conversation-update`, `speech-update` und `status-update`, also viele unnötige Aufrufe |
+| `serverMessages` | `["end-of-call-report", "status-update"]` | Der Report für die Auswertung, `status-update` (Anruf läuft / beendet) für den Live-Status in der UI. Der Default schickt zusätzlich `conversation-update`, `speech-update` und weitere Events, also viele unnötige Aufrufe |
 
 > **Warum der Webhook in den Org-Einstellungen steht**
 >
@@ -167,7 +167,7 @@ Der Prompt liegt in `vapi/system-prompt.md` und gilt für alle Stellen. Das Depl
 
 | Einstellung | Wert | Warum |
 | --- | --- | --- |
-| `artifactPlan.recordingEnabled`, `recordingFormat` | `true`, `mp3` | Damit HR das Gespräch nachhören kann (Link in Google Sheets). Vapi legt Mono, Einzelspuren und Stereo an. Die Dateien liegen privat, die vorsignierten Links (`artifact.presignedStereoUrl`) gelten nur 30 Minuten. Die Tabelle verlinkt deshalb auf den n8n-Workflow „Vapi – Aufnahme abrufen“ (`/webhook/vapi/aufnahme?call=<Call-ID>`), der bei jedem Klick einen frischen Link holt und weiterleitet; n8n speichert keine Kopie. MP3 ist deutlich kleiner als WAV. Eine eigene Transkription aus der Aufnahme wird bewusst nicht umgesetzt (siehe REQUIREMENTS F6) |
+| `artifactPlan.recordingEnabled`, `recordingFormat` | `true`, `mp3` | Damit HR das Gespräch nachhören kann (Link in der Slack-Nachricht). Vapi legt Mono, Einzelspuren und Stereo an. Die Dateien liegen privat, die vorsignierten Links (`artifact.presignedStereoUrl`) gelten nur 30 Minuten. Die Slack-Nachricht verlinkt deshalb auf den n8n-Workflow „Vapi – Aufnahme abrufen“ (`/webhook/vapi/aufnahme?call=<Call-ID>`), der bei jedem Klick einen frischen Link holt und weiterleitet; n8n speichert keine Kopie. MP3 ist deutlich kleiner als WAV. Eine eigene Transkription aus der Aufnahme wird bewusst nicht umgesetzt (siehe REQUIREMENTS F6) |
 | `artifactPlan.transcriptPlan.enabled` | `true` | Das Vapi-Transkript ist die Grundlage der Analyse in n8n |
 | `analysisPlan.summaryPlan`, `structuredDataPlan`, `successEvaluationPlan` | alle `enabled: false` | REQ-4.1: Die Analyse läuft in n8n, damit Kriterien, Modell und Speicherort in eigener Hand bleiben. Vapi erstellt keine eigene Zusammenfassung oder Bewertung |
 | `metadata` | `jobId`, `jobTitle`, `company` | Zusätzliche Stellenzuordnung neben der Assistant-ID (REQ-3.6) |
