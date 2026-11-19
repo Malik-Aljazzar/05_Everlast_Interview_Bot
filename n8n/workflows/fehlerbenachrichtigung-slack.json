@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-11-15T13:04:26.783Z",
+    "updatedAt": "2026-11-15T16:27:44.672Z",
     "createdAt": "2026-11-15T13:04:26.783Z",
     "id": "nZm9wPmSbW75hhOE",
     "name": "Fehlerbenachrichtigung – Slack",
@@ -9,68 +9,64 @@
     "isArchived": false,
     "nodes": [
       {
+        "parameters": {},
         "id": "30faa920-4fbb-48a9-b6be-2591cb8d5eda",
         "name": "Fehler in Workflow",
         "type": "n8n-nodes-base.errorTrigger",
         "typeVersion": 1,
         "position": [
-          240,
-          300
-        ],
-        "parameters": {}
+          144,
+          256
+        ]
       },
       {
-        "id": "cd81ff68-10d8-41e7-a3ea-6271af66043b",
-        "name": "Fehler an #n8n-fehler",
-        "type": "n8n-nodes-base.slack",
-        "typeVersion": 2.7,
-        "position": [
-          520,
-          300
-        ],
         "parameters": {
-          "resource": "message",
-          "operation": "post",
-          "authentication": "accessToken",
           "select": "channel",
           "channelId": {
             "__rl": true,
             "mode": "name",
             "value": "#n8n-fehler"
           },
-          "messageType": "text",
           "text": "=:rotating_light: *Workflow fehlgeschlagen:* {{ $json.workflow.name }}\n*Node:* {{ $json.execution.lastNodeExecuted ?? \"unbekannt\" }}\n*Fehler:* {{ $json.execution.error?.message ?? \"keine Meldung\" }}\n*Modus:* {{ $json.execution.mode ?? \"-\" }}\n*Execution:* <{{ $json.execution.url }}|in n8n öffnen> (Call-ID steht in den Execution-Daten)",
           "otherOptions": {
             "includeLinkToWorkflow": false,
             "mrkdwn": true
           }
         },
+        "id": "cd81ff68-10d8-41e7-a3ea-6271af66043b",
+        "name": "Fehler an #n8n-fehler",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.7,
+        "position": [
+          432,
+          256
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000,
+        "webhookId": "8c0d52a2-2a09-4880-be04-0a4b25b6d079",
         "credentials": {
           "slackApi": {
             "id": "hUPdsW9sev5mCNlM",
             "name": "Slack Interview Bot"
           }
-        },
-        "retryOnFail": true,
-        "maxTries": 3,
-        "waitBetweenTries": 5000,
-        "webhookId": "8c0d52a2-2a09-4880-be04-0a4b25b6d079"
+        }
       },
       {
+        "parameters": {
+          "content": "## Error-Workflow\nWird von „Vapi – Bewerberinterview auswerten“ als Error Workflow aufgerufen und meldet jede fehlgeschlagene Ausführung in #n8n-fehler. So geht kein Gespräch unbemerkt verloren (REQ-3.9).",
+          "height": 352,
+          "width": 656,
+          "color": 3
+        },
         "id": "41235724-07a9-4142-ae2d-35fa2548fe7f",
         "name": "Sticky Note a02c31b1",
         "type": "n8n-nodes-base.stickyNote",
         "typeVersion": 1,
         "position": [
-          208,
-          208
-        ],
-        "parameters": {
-          "content": "## Error-Workflow\nWird von „Vapi – Bewerberinterview auswerten“ als Error Workflow aufgerufen und meldet jede fehlgeschlagene Ausführung in #n8n-fehler. So geht kein Gespräch unbemerkt verloren (REQ-3.9).",
-          "color": 3,
-          "width": 448,
-          "height": 224
-        }
+          48,
+          80
+        ]
       }
     ],
     "connections": {
@@ -88,7 +84,8 @@
     },
     "settings": {
       "executionOrder": "v1",
-      "availableInMCP": true
+      "availableInMCP": true,
+      "binaryMode": "separate"
     },
     "staticData": null,
     "meta": {
@@ -96,10 +93,10 @@
       "builderVariant": "mcp"
     },
     "nodeGroups": [],
-    "pinData": null,
-    "versionId": "1a3d70bd-5c99-4eae-b456-66f33923f036",
-    "activeVersionId": "1a3d70bd-5c99-4eae-b456-66f33923f036",
-    "versionCounter": 1,
+    "pinData": {},
+    "versionId": "6f0a22e2-1438-4d8b-82af-0196afb90014",
+    "activeVersionId": "6f0a22e2-1438-4d8b-82af-0196afb90014",
+    "versionCounter": 3,
     "triggerCount": 0,
     "sourceWorkflowId": null,
     "tags": [],
@@ -124,8 +121,8 @@
       }
     ],
     "versionMetadata": {
-      "name": "Error-Workflow mit Slack-Meldung",
-      "description": "Created with 3 nodes: Fehler in Workflow, Fehler an #n8n-fehler, Sticky Note a02c31b1"
+      "name": "Version 6f0a22e2",
+      "description": ""
     }
   }
 ]

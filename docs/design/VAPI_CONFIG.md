@@ -17,12 +17,12 @@ Benchmarks, Preise und Alternativen stehen in [PROVIDER_RESEARCH.md](../analysis
 | Bereich | Einstellung |
 | --- | --- |
 | LLM | OpenAI `gpt-4.1-mini`, Temperatur 0,4, `maxTokens` 150, Fallback `gpt-4.1` |
-| Voice | Cartesia `sonic-3.6`, deutsche Stimme „Jonas“, Fallback Azure `de-DE-FlorianMultilingualNeural` |
-| Transcriber | Deepgram `flux-general-multi` (Deutsch), 12 Keyterms, Fallback Soniox `stt-rt-v6` |
+| Voice | ElevenLabs `eleven_v4_turbo` mit nativer deutscher Stimme aus der Voice Library, Fallback Cartesia „Jonas“, dann Azure `de-DE-FlorianMultilingualNeural` |
+| Transcriber | AssemblyAI `universal-3-6-pro` (Deutsch), Gesprächskontext, 15 Keyterms, Fallback Soniox `stt-rt-v6` |
 | Server | n8n-Webhook mit Header `X-Vapi-Secret`, nur `end-of-call-report` |
 | Gespräch | Agent spricht zuerst, max. 20 Minuten, Stille-Hooks, Aufnahme an, Vapi-Analyse aus |
 
-Alle Provider laufen über Vapis eigene Keys. Es ist kein eigener OpenAI-, Deepgram- oder Cartesia-Key nötig.
+Alle Provider außer ElevenLabs laufen über Vapis eigene Keys. Für ElevenLabs ist Maliks eigener Key in Vapi hinterlegt (Integrations), weil native deutsche ElevenLabs-Stimmen über Vapis Key nicht verfügbar sind.
 
 ---
 
@@ -58,20 +58,23 @@ Der Prompt liegt in `vapi/system-prompt.md`. Das Deploy-Skript entfernt die HTML
 
 ## 2. Voice
 
-**Gewählt: Cartesia `sonic-3.6`, Stimme „Jonas“ (`dff81230-ff75-49a4-af44-f6b2f43500d8`), `language: "de"`.**
-Native deutsche Stimme, laut Cartesia „casual, warm, friendly, conversational“. Das passt zum lockeren Du. Die Stimme ist männlich, damit stimmt „der KI-Assistent“ in Begrüßung und Prompt.
+**Gewählt: ElevenLabs `eleven_v4_turbo`, native deutsche Stimme aus der ElevenLabs Voice Library (`gVOibprogMfmHVVyo5r6`, von Malik ausgewählt).**
 
-**Warum nicht ElevenLabs `eleven_v4_turbo` (Empfehlung aus der Recherche)?**
+**Wie es dazu kam:**
 
-- Mit Vapis eigenem ElevenLabs-Key gibt es nur die 21 Standardstimmen aus Vapis Bibliothek (`GET /voice-library/11labs`), alle mit amerikanischem oder britischem Akzent. Eine native deutsche ElevenLabs-Stimme braucht einen eigenen ElevenLabs-Key oder muss im Dashboard zur Voice Library hinzugefügt werden (per API nicht dokumentiert).
-- Ein englischer Akzent im deutschen Bewerbungsgespräch wiegt schwerer als der kleine Vorsprung im Benchmark (Elo 1339 gegenüber 1294). Latenz und Preis sind vergleichbar (PROVIDER_RESEARCH.md, Abschnitt 1).
-- **Upgrade-Pfad:** eigenen ElevenLabs-Key in Vapi hinterlegen, `voice` auf `{"provider": "11labs", "model": "eleven_v4_turbo", "voiceId": "<deutsche Stimme>"}` setzen und deployen. Cartesia wird dann zum Fallback.
-
-**Getestete Stimmen:** Von 33 deutschen Cartesia-Stimmen in Vapis Bibliothek lehnt die API 15 ab („Couldn't Find Cartesia Voice“), darunter „Nico“ und „Viktoria“ aus der Recherche. Nutzbar sind unter anderem Jonas, Moritz, Hermann, Henrik und Alexander (männlich) sowie Jennifer, Lena, Klara, Lorelei und Marlene (weiblich). Im Testgespräch vergleichen und bei Bedarf `voiceId` tauschen.
+- **Start mit Cartesia „Jonas“** (`sonic-3.6`). Im ersten Testanruf klang die Stimme hörbar synthetisch.
+- **Getestet**, alle über Vapis eigene Keys: MiniMax (`German_FriendlyMan`, `German_SweetLady`), OpenAI `gpt-4o-mini-tts` (`cedar`, `marin` mit Anweisung „akzentfreies Hochdeutsch“) und Deepgram Aura‑2 (`julius`, `viktoria`). Keine kam an ElevenLabs heran.
+- **Native deutsche ElevenLabs-Stimmen** gibt es nur mit eigenem Key. Über Vapis Key bietet die Bibliothek nur englische Standardstimmen, und ihre Keyword-Suche (`GET /voice-library/11labs?keyword=…`) findet nur einen Bruchteil der ElevenLabs-Bibliothek.
+- **Einrichtung:**
+  1. ElevenLabs-Key in Vapi unter Integrations hinterlegen.
+  2. Die Stimme in ElevenLabs zu „My Voices“ hinzufügen. Das verlangt Vapi.
+  3. `voiceId` in `assistant.json` setzen und deployen.
+- **Modell `eleven_v4_turbo`:** 129–150 ms bis zum ersten Audio, Elo 1339 (PROVIDER_RESEARCH.md, Abschnitt 1). Vapi ignoriert bei diesem Modell `similarityBoost`, `style`, `speed` und `optimizeStreamingLatency`. `eleven_flash_v2_5` wäre schneller, aber flacher. `multilingual_v2` und `v3` sind zu langsam für Live-Turns.
+- **Free-Plan:** 10.000 Zeichen im Monat. Ein 6‑Minuten-Gespräch braucht rund 1.900 Zeichen Agent-Sprache.
 
 | Einstellung | Wert | Warum |
 | --- | --- | --- |
-| `fallbackPlan.voices` | Azure `de-DE-FlorianMultilingualNeural` | Anderer Anbieter mit nativer deutscher Männerstimme, läuft über Vapis Key. Ein Cartesia-Fallback fiele mit dem Hauptanbieter aus und hat kein eigenes `model`-Feld |
+| `fallbackPlan.voices` | 1. Cartesia `sonic-3.6` „Jonas“, 2. Azure `de-DE-FlorianMultilingualNeural` | Beide laufen über Vapis Keys. Ist das ElevenLabs-Kontingent aufgebraucht oder fällt ElevenLabs aus, spricht der Agent trotzdem weiter |
 | `chunkPlan.minCharacters` | 12 (Default 30) | Der erste Satzteil geht früher an die TTS, der Agent fängt schneller an zu sprechen |
 | `chunkPlan.formatPlan.formattersEnabled` | nur `markdown`, `asterisk`, `stripAsterisk`, `quote`, `newline` | Vapis Zahlen- und Datumsformatter sind englisch („1200“ wird zu „twelve hundred“). Stattdessen schreibt das LLM Zahlen als deutsche Wörter (Prompt-Regel) |
 | `chunkPlan.formatPlan.replacements` | siehe Tabelle | Aussprache englischer Fachbegriffe. Das funktioniert unabhängig vom Provider und gilt auch für den Fallback |
@@ -92,12 +95,24 @@ Native deutsche Stimme, laut Cartesia „casual, warm, friendly, conversational�
 
 | Einstellung | Wert | Warum |
 | --- | --- | --- |
-| `provider`, `model` | Deepgram `flux-general-multi` | Streaming-STT mit eingebauter End-of-Turn-Erkennung für Deutsch. Vapis Smart Endpointing (LiveKit) gibt es nur auf Englisch |
-| `languages` | `["de"]` | Sprach-Hint für Flux Multilingual. Bei Flux ist `languages` das richtige Feld, nicht `language` |
-| `keyterm` | Everlast, n8n, Vapi, JavaScript, TypeScript, Python, React, API, Webhook, GitHub, LLM, Make | Firmenname und Fachbegriffe würden sonst oft falsch erkannt |
-| `eotThreshold`, `eotTimeoutMs` | 0,7 / 5000 ms (Defaults, bewusst explizit gesetzt) | Startwert. Fällt der Agent Bewerbern in Denkpausen ins Wort, auf 0,8 erhöhen |
-| `startSpeakingPlan.smartEndpointingPlan` | nicht gesetzt | Würde die Turn-Erkennung von Flux überschreiben |
-| `fallbackPlan.transcribers` | Soniox `stt-rt-v6`, Deutsch, dieselben Begriffe als `customVocabulary` | Zweiter Anbieter, falls Deepgram ausfällt |
+**Gewechselt von Deepgram Flux zu AssemblyAI** nach dem ersten Testanruf. Flux (`flux-general-multi`) hat dort mehrere Fehler gemacht:
+
+- Den Namen „Malik Aljazzar“ hat es als „Medical Azure“ erkannt.
+- Im Transkript standen Hindi-Schriftzeichen.
+- Auf das Ende einer Aussage hat es bis zu 3,8 s gewartet, im Schnitt kam die Antwort nach 1,7 s.
+- Bei Denkpausen ist der Agent trotzdem ins Wort gefallen.
+
+| Einstellung | Wert | Warum |
+| --- | --- | --- |
+| `provider`, `speechModel` | `assembly-ai`, `universal-3-6-pro` | Im deutschen WER-Vergleich deutlich vor Deepgram (1,86 % gegenüber 4,35 % bei Nova‑3, PROVIDER_RESEARCH.md). Hat eingebaute semantische End-of-Turn-Erkennung |
+| `language`, `languageCodes` | `multi`, `["de"]` | Die Pro-Modelle laufen als „multi“, `languageCodes` lenkt sie fest auf Deutsch |
+| `agentContext` | Kurzbeschreibung des Gesprächs (Bewerbungsgespräch, oft nicht-deutsche Namen, Fachbegriffe) | Kontext für die Erkennung, vor allem bei Namen |
+| `agentContextAutoUpdateEnabled` | `true` | Nach jedem Agent-Beitrag bekommt AssemblyAI die gerade gestellte Frage. Die Antwort wird im Kontext der Frage erkannt |
+| `keytermsPrompt` | Everlast, n8n, Vapi, JavaScript, TypeScript, Python, React, API, Webhook, GitHub, LLM, Make, CRM, Bachelorarbeit, Kündigungsfrist | Bei den Pro-Modellen ohne Aufpreis |
+| `endOfTurnConfidenceThreshold`, `minEndOfTurnSilenceWhenConfident`, `maxTurnSilence` | 0,7 / 500 ms / 1800 ms | Ist das Modell sicher, antwortet der Agent nach 0,5 s. Bei Denkpausen wartet er bis zu 1,8 s, statt ins Wort zu fallen. Die Defaults (160 / 400 ms) sind für Interviews zu ungeduldig |
+| `vadAssistedEndpointingEnabled` | `true` | Solange die Sprachaktivitätserkennung noch Sprache hört, wird das Turn-Ende zurückgehalten |
+| `startSpeakingPlan.smartEndpointingPlan` | nicht gesetzt | Sonst würde Vapi die End-of-Turn-Erkennung von AssemblyAI ignorieren |
+| `fallbackPlan.transcribers` | Soniox `stt-rt-v6`, Deutsch, `agentTextInputEnabled`, dieselben Begriffe als `customVocabulary` | Zweiter Anbieter mit eigener semantischer Turn-Erkennung, falls AssemblyAI ausfällt |
 
 ---
 
@@ -111,6 +126,13 @@ Native deutsche Stimme, laut Cartesia „casual, warm, friendly, conversational�
 | `server.credentialId` | Credential `everlast-n8n-x-vapi-secret` (`07b6d617-0959-44bb-8e9f-495fe910a22e`) | Typ `custom-credential` mit Bearer-Plan, `headerName: "X-Vapi-Secret"` und `bearerPrefixEnabled: false`. Vapi sendet damit `X-Vapi-Secret: <Secret>`, und n8n prüft den Header per Header Auth. Das Secret steht nur in `.env` und im Credential, nie im Repo |
 | `server.timeoutSeconds`, `server.backoffPlan` | 20 s; exponentiell, 3 Retries ab 2 s | Ein kurzer Ausfall von n8n kostet kein Protokoll. Doppelte Zustellungen fängt n8n über die Call-ID ab (REQ-3.7) |
 | `serverMessages` | `["end-of-call-report"]` | Nur das Event, das n8n braucht. Der Default schickt unter anderem auch `conversation-update`, `speech-update` und `status-update`, also viele unnötige Aufrufe |
+
+> **Stolperfalle: Testanrufe aus dem Dashboard kommen ohne Secret an.**
+>
+> - **Was passiert:** „Talk to Assistant“ schickt die komplette Konfiguration als `assistantOverrides` mit, inklusive `server`. Vapi stuft die Server-URL damit als „vom Request geliefert“ ein und lässt das Credential weg. Im Call-Log steht dann `serverMessage.credentialsWithheld`. n8n bekommt den Bericht ohne `X-Vapi-Secret`, antwortet mit 403 und legt keine Ausführung an.
+> - **Wer betroffen ist:** Echte Anrufe über eine Telefonnummer nutzen die gespeicherte Konfiguration und sind nicht betroffen.
+> - **Lösung:** Server-URL und Credential auf Organisationsebene setzen (Dashboard → Org-Einstellungen; per API-Key nicht möglich) und `server` aus dem Assistant entfernen. Org-Einstellungen gelten als vertrauenswürdig, das Credential wird dann mitgeschickt.
+> - **Bis dahin:** Verpasste Anrufe lassen sich nachträglich verarbeiten. Dazu `GET /call/{id}` bei Vapi holen und als `end-of-call-report` mit Secret an den Webhook schicken.
 
 ### Nachrichten
 
@@ -144,7 +166,7 @@ Native deutsche Stimme, laut Cartesia „casual, warm, friendly, conversational�
 
 | Einstellung | Wert | Warum |
 | --- | --- | --- |
-| `artifactPlan.recordingEnabled`, `recordingFormat` | `true`, `mp3` | Damit HR das Gespräch nachhören kann (Link in Google Sheets). Vapi legt Mono, Einzelspuren und Stereo an (`artifact.recording.stereoUrl`). MP3 ist deutlich kleiner als WAV. Eine eigene Transkription aus der Aufnahme wird bewusst nicht umgesetzt (siehe REQUIREMENTS F6) |
+| `artifactPlan.recordingEnabled`, `recordingFormat` | `true`, `mp3` | Damit HR das Gespräch nachhören kann (Link in Google Sheets). Vapi legt Mono, Einzelspuren und Stereo an. Die Dateien liegen privat, die vorsignierten Links (`artifact.presignedStereoUrl`) gelten nur 30 Minuten. Die Tabelle verlinkt deshalb auf den n8n-Workflow „Vapi – Aufnahme abrufen“ (`/webhook/vapi/aufnahme?call=<Call-ID>`), der bei jedem Klick einen frischen Link holt und weiterleitet; n8n speichert keine Kopie. MP3 ist deutlich kleiner als WAV. Eine eigene Transkription aus der Aufnahme wird bewusst nicht umgesetzt (siehe REQUIREMENTS F6) |
 | `artifactPlan.transcriptPlan.enabled` | `true` | Das Vapi-Transkript ist die Grundlage der Analyse in n8n |
 | `analysisPlan.summaryPlan`, `structuredDataPlan`, `successEvaluationPlan` | alle `enabled: false` | REQ-4.1: Die Analyse läuft in n8n, damit Kriterien, Modell und Speicherort in eigener Hand bleiben. Vapi erstellt keine eigene Zusammenfassung oder Bewertung |
 | `metadata` | `jobId`, `jobTitle`, `company` | Zusätzliche Stellenzuordnung neben der Assistant-ID (REQ-3.6) |
@@ -157,12 +179,12 @@ Ziel (REQ-7.1): weniger als etwa 1 Sekunde vom Ende der Aussage bis zum Beginn d
 
 | Maßnahme | Einstellung | Effekt |
 | --- | --- | --- |
-| Schnelle Turn-Erkennung | Flux End-of-Turn, kein `smartEndpointingPlan` | Turn-Ende meist unter 400 ms statt fester Pausen |
+| Schnelle Turn-Erkennung | Semantische End-of-Turn-Erkennung von AssemblyAI, kein `smartEndpointingPlan` | Ist das Modell sicher, antwortet der Agent nach 0,5 s statt nach festen Pausen. Mit Flux lag der Schnitt im ersten Test bei 1,7 s, weil es bei Unsicherheit bis zu 5 s wartete |
 | Kurze Mindestwartezeit | `startSpeakingPlan.waitSeconds` 0,3 (Default 0,4) | Die Untergrenze sinkt um 100 ms. Ist die Pipeline ohnehin langsamer, ändert das nichts |
 | Schnelles LLM | `gpt-4.1-mini` mit Prompt-Caching (24 h) | TTFT P50 rund 316 ms |
 | Kurze Antworten | `maxTokens` 150, Prompt: höchstens 2 Sätze, 1 Frage | Weniger Text bis zum ersten Satzende, kürzere Turns |
 | Früher TTS-Start | `chunkPlan.minCharacters` 12 | Die TTS startet schon mit dem ersten Satzteil |
-| Schnelle TTS | Cartesia `sonic-3.6` | 143–270 ms bis zum ersten Audio (unabhängig gemessen) |
+| Schnelle TTS | ElevenLabs `eleven_v4_turbo` | 129–150 ms bis zum ersten Audio (EU-Benchmark bzw. Hersteller) |
 | Kein Ballast | `backgroundSound: "off"`, keine Tools außer `endCall`, n8n erst nach dem Call | Keine Tool-Roundtrips im Gespräch (REQ-7.2) |
 | Region | Vapi-Organisation und die Provider laufen in den USA | Keine Sprünge zwischen Regionen pro Turn. Für Bewerber in Deutschland kommt eine transatlantische Strecke dazu (rund 100 ms) [?] |
 
@@ -181,8 +203,10 @@ Geprüft am 2026-11-15 gegen die OpenAPI-Spec und die Live-API:
 - **Stille:** `silenceTimeoutSeconds` und `messagePlan.idleMessages` gibt es nicht mehr. Ersatz sind `hooks` mit `customer.speech.timeout`.
 - **Flux Multilingual:** Die Sprache wird über `transcriber.languages: ["de"]` gesetzt, nicht über `language`.
 - **Credential:** `provider: "custom-credential"` mit `authenticationPlan.type: "bearer"`. `POST /credential` fehlt in der öffentlichen Spec, funktioniert aber.
-- **Cartesia als Fallback:** `FallbackCartesiaVoice` hat kein `model`-Feld und lässt sich deshalb nicht auf `sonic-3.6` festlegen.
-- **Stimmen:** ElevenLabs bietet über Vapis Key nur die 21 Standardstimmen. Die Cartesia-Stimmen „Nico“ und „Viktoria“ lehnt die API ab.
+- **Cartesia als Fallback:** `FallbackCartesiaVoice` hat inzwischen ein `model`-Feld (Stand Spec 2026-11-15), `sonic-3.6` wird gespeichert.
+- **Stimmen:** ElevenLabs bietet über Vapis Key nur die Standardstimmen, für native deutsche Stimmen braucht es einen eigenen Key. Die Cartesia-Stimmen „Nico“ und „Viktoria“ lehnt die API ab.
+- **Versionen:** Die Organisation hat Assistant-Versionierung. Jeder `PATCH` veröffentlicht eine neue Version (`GET /assistant/{id}/versions`). Das Dashboard bearbeitet einen eigenen Entwurf (`GET /assistant/{id}/draft`), den spätere API-Änderungen nicht erreichen. **„Talk to Assistant“ testet diesen Entwurf** (er wird als `assistantOverrides` mitgeschickt), nicht die veröffentlichte Version. Nach jedem Deploy oder Sync deshalb den Entwurf verwerfen, bevor man testet: im Dashboard oder mit `python vapi/deploy.py --discard-draft` (`DELETE /assistant/{id}/draft/{draftId}`). Das Dashboard legt beim nächsten Öffnen einen frischen Entwurf aus der neuesten Version an. Einen veralteten Entwurf nie veröffentlichen, er würde die Konfiguration zurückdrehen (so geschehen mit v7 am 15.11.).
+- **Dashboard-Testanrufe:** Sie kommen ohne Webhook-Credential an (siehe Abschnitt 4, „Stolperfalle“).
 - **Formatter:** Die `formatPlan`-Formatter sind englisch und deshalb eingeschränkt.
 - **Ersetzungen:** `exact`-Replacements ersetzen standardmäßig nur das erste Vorkommen, daher `replaceAllEnabled: true`.
 - **API-Zugriff:** Die API verlangt einen eigenen User-Agent. Cloudflare blockt den Standard-Agent von Python (Fehler 1010).
@@ -192,5 +216,5 @@ Geprüft am 2026-11-15 gegen die OpenAPI-Spec und die Live-API:
 - **Testgespräch im Dashboard** („Talk to Assistant“): Stimme, Aussprache (n8n, Vapi, Everlast, Make), Stille-Hooks und Auflegen prüfen, insbesondere ob es genau eine Verabschiedung gibt.
 - **n8n:** Webhook `/webhook/vapi/interview` als Production-URL aktiv; Header-Auth-Credential mit Header `X-Vapi-Secret` und demselben Secret wie in `.env`.
 - **Telefonnummer (REQ-1.8):** nicht angelegt. Bei Bedarf in Vapi kaufen oder importieren und diesem Assistant zuweisen.
-- **Optional:** eigener ElevenLabs-Key für `eleven_v4_turbo` mit nativer deutscher Stimme (siehe Upgrade-Pfad).
+- **Webhook für Dashboard-Tests:** Server-URL und Credential in den Org-Einstellungen setzen, dann `server` aus `assistant.json` entfernen (siehe Abschnitt 4, „Stolperfalle“).
 - **Optional:** `artifactPlan.transcriptPlan.assistantName` / `userName` (z. B. „Interviewer“ / „Bewerber“) für ein lesbareres Transkript. Nur zusammen mit dem n8n-Workflow ändern, falls dieser die Präfixe „AI:“ / „User:“ auswertet.

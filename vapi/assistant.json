@@ -46,11 +46,10 @@
   },
 
   "voice": {
-    "provider": "cartesia",
-    "model": "sonic-3.6",
-    "language": "de",
-    "voiceId": "dff81230-ff75-49a4-af44-f6b2f43500d8",
-    "_voiceName": "Jonas (Cartesia, de, male) - casual, warm, friendly, conversational",
+    "provider": "11labs",
+    "model": "eleven_v4_turbo",
+    "voiceId": "gVOibprogMfmHVVyo5r6",
+    "_voiceName": "German voice chosen by Malik in the ElevenLabs Voice Library. Needs Malik's ElevenLabs key in Vapi and the voice in 'My Voices'",
     "chunkPlan": {
       "enabled": true,
       "minCharacters": 12,
@@ -68,6 +67,28 @@
     },
     "fallbackPlan": {
       "voices": [
+        {
+          "provider": "cartesia",
+          "model": "sonic-3.6",
+          "language": "de",
+          "voiceId": "dff81230-ff75-49a4-af44-f6b2f43500d8",
+          "_voiceName": "Jonas (Cartesia, de, male) - included in Vapi, steps in if ElevenLabs fails or the quota is used up",
+          "chunkPlan": {
+            "enabled": true,
+            "minCharacters": 12,
+            "formatPlan": {
+              "enabled": true,
+              "formattersEnabled": ["markdown", "asterisk", "stripAsterisk", "quote", "newline"],
+              "replacements": [
+                { "type": "exact", "key": "n8n", "value": "n eight n", "replaceAllEnabled": true },
+                { "type": "regex", "regex": "\\bVapi\\b", "value": "Wapi" },
+                { "type": "regex", "regex": "\\bAPI", "value": "A P I" },
+                { "type": "regex", "regex": "\\bLLM", "value": "L L M" },
+                { "type": "regex", "regex": "\\bMake\\b", "value": "Mejk" }
+              ]
+            }
+          }
+        },
         {
           "provider": "azure",
           "voiceId": "de-DE-FlorianMultilingualNeural",
@@ -92,19 +113,27 @@
   },
 
   "transcriber": {
-    "provider": "deepgram",
-    "model": "flux-general-multi",
-    "languages": ["de"],
-    "keyterm": ["Everlast", "n8n", "Vapi", "JavaScript", "TypeScript", "Python", "React", "API", "Webhook", "GitHub", "LLM", "Make"],
-    "eotThreshold": 0.7,
-    "eotTimeoutMs": 5000,
+    "_why": "Deepgram flux-general-multi misheard German and names in the first test call ('Malik Aljazzar' -> 'Medical Azure', stray Hindi characters) and waited up to 3.8 s for end of turn. AssemblyAI Universal-3 Pro is far more accurate for German, gets the agent's last question as context and has semantic end-of-turn detection.",
+    "provider": "assembly-ai",
+    "language": "multi",
+    "speechModel": "universal-3-6-pro",
+    "languageCodes": ["de"],
+    "mode": "balanced",
+    "keytermsPrompt": ["Everlast", "n8n", "Vapi", "JavaScript", "TypeScript", "Python", "React", "API", "Webhook", "GitHub", "LLM", "Make", "CRM", "Bachelorarbeit", "Kündigungsfrist"],
+    "agentContext": "Telefonisches Bewerbungsgespräch auf Deutsch für Everlast Consulting, Stelle Junior Entwickler. Bewerber nennen ihren Vor- und Nachnamen, oft nicht-deutsche Namen, manchmal buchstabiert. Fachbegriffe: n8n, Make, Vapi, API, Webhook, JavaScript, TypeScript, Python, LLM, CRM.",
+    "agentContextAutoUpdateEnabled": true,
+    "endOfTurnConfidenceThreshold": 0.7,
+    "minEndOfTurnSilenceWhenConfident": 500,
+    "maxTurnSilence": 1800,
+    "vadAssistedEndpointingEnabled": true,
     "fallbackPlan": {
       "transcribers": [
         {
           "provider": "soniox",
           "model": "stt-rt-v6",
           "language": "de",
-          "customVocabulary": ["Everlast", "n8n", "Vapi", "JavaScript", "TypeScript", "Python", "React", "API", "Webhook", "GitHub", "LLM", "Make"]
+          "agentTextInputEnabled": true,
+          "customVocabulary": ["Everlast", "n8n", "Vapi", "JavaScript", "TypeScript", "Python", "React", "API", "Webhook", "GitHub", "LLM", "Make", "CRM", "Bachelorarbeit", "Kündigungsfrist"]
         }
       ]
     }

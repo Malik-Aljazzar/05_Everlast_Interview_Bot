@@ -1,10 +1,10 @@
 [
   {
-    "updatedAt": "2026-11-15T15:33:39.296Z",
+    "updatedAt": "2026-11-19T18:33:55.678Z",
     "createdAt": "2026-11-15T13:51:48.146Z",
     "id": "RGKss8vJmfN3nvF1",
     "name": "Vapi – Leitfaden synchronisieren",
-    "description": "Übernimmt Stellenfakten (Tab „Stellen“) und Interview-Leitfaden (Tab „Leitfaden“) aus Google Sheets in den System-Prompt der Vapi-Assistants. Stündlich und manuell; schreibt nur bei Änderungen.",
+    "description": "Übernimmt Stellenfakten (Tab „Stellen“) und Interview-Leitfaden (Tab „Leitfaden“) aus Google Sheets in den System-Prompt der Vapi-Assistants. Prüft jede Minute und schreibt nur bei Änderungen; manuell startbar.",
     "active": true,
     "isArchived": false,
     "nodes": [
@@ -49,11 +49,14 @@
             "id": "hlfvlSOAGLMPNEqV",
             "name": "Google Sheets Service Account"
           }
-        }
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000
       },
       {
         "id": "26062e92-7962-49c6-bb7f-66bf1214560c",
-        "name": "Stündlich",
+        "name": "Jede Minute prüfen",
         "type": "n8n-nodes-base.scheduleTrigger",
         "typeVersion": 1.4,
         "position": [
@@ -64,9 +67,8 @@
           "rule": {
             "interval": [
               {
-                "field": "hours",
-                "hoursInterval": 1,
-                "triggerAtMinute": 5
+                "field": "minutes",
+                "minutesInterval": 1
               }
             ]
           }
@@ -103,7 +105,10 @@
             "name": "Google Sheets Service Account"
           }
         },
-        "executeOnce": true
+        "executeOnce": true,
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000
       },
       {
         "id": "a4f5d1d1-706f-4a9d-8c31-c729397afbbc",
@@ -117,7 +122,7 @@
         "parameters": {
           "mode": "runOnceForAllItems",
           "language": "javaScript",
-          "jsCode": "// Baut je Stelle (Assistant-ID) die Prompt-Abschnitte \"Stelle\" und \"Leitfaden\" für Vapi.\nconst liste = (text) => String(text ?? '').split(/\\n|;/).map((s) => s.trim()).filter(Boolean);\nconst unterpunkte = (text) => liste(text).map((x) => '  - ' + x);\nconst zahl = (v) => parseFloat(String(v ?? '').replace(',', '.'));\n\nconst leitfaden = $('Leitfaden lesen').all().map((i) => i.json).filter((r) => r['Assistant-ID'] && r.Frage);\nconst stellen = $('Stellen lesen').all().map((i) => i.json).filter((r) => r['Assistant-ID']);\n\nreturn stellen.map((s) => {\n  const id = String(s['Assistant-ID']).trim();\n  const fragen = leitfaden\n    .filter((l) => String(l['Assistant-ID']).trim() === id)\n    .sort((a, b) => zahl(a.Nr) - zahl(b.Nr));\n\n  const abschnittStelle = [\n    'Nur diese Fakten darfst du nennen:',\n    '',\n    '- Stelle: ' + s.Stelle,\n    '- Unternehmen: ' + (s.Unternehmen ?? ''),\n    '- Aufgaben:',\n    ...unterpunkte(s.Aufgaben),\n    '- Anforderungen:',\n    ...unterpunkte(s.Anforderungen),\n    '',\n    'Alles andere weißt du nicht, zum Beispiel Gehalt der Stelle, Benefits, Homeoffice oder Remote, Arbeitszeiten, Team, Kunden, Ablauf und Dauer des Bewerbungsprozesses. Erfinde dazu nichts. Sag ehrlich, dass du das nicht weißt und das HR-Team die Frage beantwortet.',\n  ].join('\\n');\n\n  const schritte = fragen.map((f, i) =>\n    (i + 1) + '. ' + f.Thema + ': „' + String(f.Frage).trim() + '“' + (String(f.Hinweis ?? '').trim() ? ' ' + String(f.Hinweis).trim() : '')\n  );\n  schritte.push((fragen.length + 1) + '. Abschluss: siehe unten.');\n  const abschnittLeitfaden = [\n    'Arbeite die Punkte in dieser Reihenfolge ab. Stell die Fragen sinngemäß so wie hier, damit alle Bewerber dieselben Kernfragen bekommen.',\n    '',\n    ...schritte,\n  ].join('\\n');\n\n  return { json: { assistantId: id, stelle: s.Stelle, anzahlFragen: fragen.length, abschnittStelle, abschnittLeitfaden } };\n});"
+          "jsCode": "// Baut je Stelle (Assistant-ID) die Prompt-Abschnitte \"Stelle\" und \"Leitfaden\" für Vapi.\nconst liste = (text) => String(text ?? '').split(/\\n|;/).map((s) => s.trim()).filter(Boolean);\nconst unterpunkte = (text) => liste(text).map((x) => '  - ' + x);\n\nconst leitfaden = $('Leitfaden lesen').all().map((i) => i.json).filter((r) => r['Assistant-ID'] && r.Frage);\nconst stellen = $('Stellen lesen').all().map((i) => i.json).filter((r) => r['Assistant-ID']);\n\nreturn stellen.map((s) => {\n  const id = String(s['Assistant-ID']).trim();\n  // Reihenfolge = Zeilenreihenfolge im Tab.\n  const fragen = leitfaden.filter((l) => String(l['Assistant-ID']).trim() === id);\n\n  const abschnittStelle = [\n    'Nur diese Fakten darfst du nennen:',\n    '',\n    '- Stelle: ' + s.Stelle,\n    '- Unternehmen: ' + (s.Unternehmen ?? ''),\n    '- Aufgaben:',\n    ...unterpunkte(s.Aufgaben),\n    '- Anforderungen:',\n    ...unterpunkte(s.Anforderungen),\n    '',\n    'Alles andere weißt du nicht, zum Beispiel Gehalt der Stelle, Benefits, Homeoffice oder Remote, Arbeitszeiten, Team, Kunden, Ablauf und Dauer des Bewerbungsprozesses. Erfinde dazu nichts. Sag ehrlich, dass du das nicht weißt und das HR-Team die Frage beantwortet.',\n  ].join('\\n');\n\n  const schritte = fragen.map((f, i) =>\n    (i + 1) + '. ' + f.Thema + ': „' + String(f.Frage).trim() + '“' + (String(f.Hinweis ?? '').trim() ? ' ' + String(f.Hinweis).trim() : '')\n  );\n  schritte.push((fragen.length + 1) + '. Abschluss: siehe unten.');\n  const abschnittLeitfaden = [\n    'Arbeite die Punkte in dieser Reihenfolge ab. Stell die Fragen sinngemäß so wie hier, damit alle Bewerber dieselben Kernfragen bekommen.',\n    '',\n    ...schritte,\n  ].join('\\n');\n\n  return { json: { assistantId: id, stelle: s.Stelle, anzahlFragen: fragen.length, abschnittStelle, abschnittLeitfaden } };\n});"
         }
       },
       {
@@ -151,7 +156,10 @@
             "id": "rEWuAIoBRZRraSyN",
             "name": "Header Auth account 2"
           }
-        }
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000
       },
       {
         "id": "6e3693ca-d242-4dfe-a085-52d21ea192db",
@@ -236,7 +244,10 @@
             "id": "rEWuAIoBRZRraSyN",
             "name": "Header Auth account 2"
           }
-        }
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000
       },
       {
         "id": "f807ed41-fc06-4b27-9f8b-f5317af3b0a6",
@@ -248,7 +259,7 @@
           -60
         ],
         "parameters": {
-          "content": "## Vapi – Leitfaden synchronisieren\nHR pflegt Stellenfakten (Tab „Stellen“) und Interviewfragen (Tab „Leitfaden“) in Google Sheets. Dieser Workflow schreibt sie stündlich oder auf Knopfdruck in die Abschnitte „# Stelle“ und „# Leitfaden“ des Vapi-System-Prompts. Kein n8n-Aufruf während des Gesprächs, also keine Zusatzlatenz. Geschrieben wird nur bei Änderungen.",
+          "content": "## Vapi – Leitfaden synchronisieren\nHR pflegt Stellenfakten (Tab „Stellen“) und Interviewfragen (Tab „Leitfaden“) in Google Sheets. Der Workflow prüft jede Minute, ob sich daraus ein anderer Prompt ergibt, und schreibt nur dann in die Abschnitte „# Stelle“ und „# Leitfaden“ des Vapi-System-Prompts. Änderungen in der Tabelle sind so nach spätestens einer Minute beim Agent. Kein n8n-Aufruf während des Gesprächs, also keine Zusatzlatenz.",
           "color": 7,
           "width": 700,
           "height": 200
@@ -272,17 +283,6 @@
           [
             {
               "node": "Leitfaden lesen",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Stündlich": {
-        "main": [
-          [
-            {
-              "node": "Stellen lesen",
               "type": "main",
               "index": 0
             }
@@ -343,6 +343,17 @@
             }
           ]
         ]
+      },
+      "Jede Minute prüfen": {
+        "main": [
+          [
+            {
+              "node": "Stellen lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "settings": {
@@ -356,6 +367,14 @@
     },
     "staticData": {
       "node:Stündlich": {
+        "recurrenceRules": [
+          null
+        ],
+        "recurrenceRuleSignatures": [
+          null
+        ]
+      },
+      "node:Jede Minute prüfen": {
         "recurrenceRules": [
           null
         ],
@@ -392,9 +411,9 @@
       }
     ],
     "pinData": null,
-    "versionId": "767570f5-3c8d-4f5d-83df-34b09034b3a2",
-    "activeVersionId": "767570f5-3c8d-4f5d-83df-34b09034b3a2",
-    "versionCounter": 3,
+    "versionId": "0b9c181f-c511-46b9-8f3c-57649ae2bb33",
+    "activeVersionId": "0b9c181f-c511-46b9-8f3c-57649ae2bb33",
+    "versionCounter": 8,
     "triggerCount": 1,
     "sourceWorkflowId": null,
     "tags": [],
@@ -419,8 +438,8 @@
       }
     ],
     "versionMetadata": {
-      "name": "Listen als Unterpunkte, Error-Workflow und Settings",
-      "description": "Updated nodes: Prompt-Abschnitte bauen"
+      "name": "Wiederholung bei Netzwerkfehlern",
+      "description": "Sheets- und Vapi-Aufrufe versuchen es bei Fehlern bis zu 3-mal, damit kurze DNS-Ausfälle (16.11., EAI_AGAIN) keine Fehlermeldungen in #n8n-fehler auslösen."
     }
   }
 ]

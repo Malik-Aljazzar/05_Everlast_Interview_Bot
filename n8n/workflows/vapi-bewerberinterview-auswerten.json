@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-11-15T13:50:16.464Z",
+    "updatedAt": "2026-11-19T18:33:54.804Z",
     "createdAt": "2026-11-15T13:48:31.583Z",
     "id": "FnNGF0khbx2a1cov",
     "name": "Vapi – Bewerberinterview auswerten",
@@ -154,7 +154,7 @@
                 "id": "f-aufnahme",
                 "name": "aufnahmeUrl",
                 "type": "string",
-                "value": "={{ $json.body.message.artifact?.recording?.stereoUrl ?? $json.body.message.artifact?.stereoRecordingUrl ?? $json.body.message.artifact?.recordingUrl ?? $json.body.message.recordingUrl ?? \"\" }}"
+                "value": "={{ ($json.body.message.artifact?.recording || $json.body.message.artifact?.recordingUrl || $json.body.message.artifact?.stereoRecordingUrl || $json.body.message.recordingUrl) ? 'https://n8n.mal-zeta.de/webhook/vapi/aufnahme?call=' + $json.body.message.call?.id : '' }}"
               }
             ]
           },
@@ -227,7 +227,10 @@
             "name": "Google Sheets Service Account"
           }
         },
-        "alwaysOutputData": true
+        "alwaysOutputData": true,
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000
       },
       {
         "id": "b1513330-ac3b-47dd-ab64-4849eca0244a",
@@ -269,7 +272,10 @@
           }
         },
         "executeOnce": true,
-        "alwaysOutputData": true
+        "alwaysOutputData": true,
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000
       },
       {
         "id": "bd3f4801-39ef-4874-9f68-be9b66f0ebf5",
@@ -311,7 +317,10 @@
           }
         },
         "executeOnce": true,
-        "alwaysOutputData": true
+        "alwaysOutputData": true,
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000
       },
       {
         "id": "f4ef40c0-cfb3-4b27-9569-377a122d4302",
@@ -325,7 +334,7 @@
         "parameters": {
           "mode": "runOnceForAllItems",
           "language": "javaScript",
-          "jsCode": "// Baut aus den Tabs Stellen, Bewertung und Leitfaden die Bewertungsgrundlage für den Analyse-Prompt.\nconst d = $('Daten extrahieren').first().json;\nconst stelle = $('Stelle laden').first().json;\nif (!stelle['Assistant-ID']) {\n  throw new Error('Keine Stelle für Assistant-ID \"' + d.assistantId + '\" im Tab „Stellen“ gefunden (Call ' + d.callId + ').');\n}\n\nconst zahl = (v) => parseFloat(String(v ?? '').replace('%', '').replace(',', '.'));\nconst liste = (text) => String(text ?? '').split(/\\n|;/).map((s) => s.trim()).filter(Boolean);\n\n// Standardwerte, wenn im Tab nichts eingetragen ist.\nconst STANDARD_SKALA = {\n  1: 'Deutlich unter der Erwartung an die Stelle.',\n  2: 'Unter der Erwartung, mit deutlichen Lücken.',\n  3: 'Erfüllt die Erwartung an die Stelle.',\n  4: 'Über der Erwartung.',\n  5: 'Herausragend, deutlich über der Erwartung.',\n};\nconst STANDARD_EINLADEN_AB = 70;\nconst STANDARD_ABSAGE_UNTER = 45;\n\n// Kriterien: Skala aus den gefüllten Spalten \"Score <Zahl>\". Keine gefüllt -> Standardskala 1–5,\n// einzelne Lücken innerhalb der Skala -> Standardtext der Stufe.\nconst roh = $('Bewertung laden').all().map((i) => i.json).filter((r) => r.Kriterium).map((r) => {\n  const gefuellt = Object.keys(r)\n    .map((k) => ({ k, m: k.match(/^Score\\s*(\\d+)$/) }))\n    .filter(({ k, m }) => m && String(r[k] ?? '').trim() !== '')\n    .map(({ k, m }) => ({ wert: Number(m[1]), text: String(r[k]).trim() }));\n  let stufen;\n  if (!gefuellt.length) {\n    stufen = Object.entries(STANDARD_SKALA).map(([wert, text]) => ({ wert: Number(wert), text }));\n  } else {\n    const werte = gefuellt.map((s) => s.wert);\n    stufen = [];\n    for (let w = Math.min(...werte); w <= Math.max(...werte); w++) {\n      stufen.push(gefuellt.find((s) => s.wert === w) ?? { wert: w, text: STANDARD_SKALA[w] ?? 'Zwischenstufe.' });\n    }\n  }\n  const gewicht = zahl(r.Gewicht);\n  return {\n    name: String(r.Kriterium).trim(),\n    gewicht: gewicht > 0 ? gewicht : null,\n    bewertet: String(r['Was wird bewertet'] ?? '').trim() || String(r.Kriterium).trim(),\n    stufen,\n    min: stufen[0].wert,\n    max: stufen[stufen.length - 1].wert,\n  };\n});\n// Leeres Gewicht -> Durchschnitt der eingetragenen Gewichte (alle leer -> gleich gewichtet).\nconst eingetragen = roh.filter((k) => k.gewicht !== null).map((k) => k.gewicht);\nconst standardGewicht = eingetragen.length ? eingetragen.reduce((a, b) => a + b, 0) / eingetragen.length : 1;\nconst kriterien = roh.map((k) => ({ ...k, gewicht: k.gewicht ?? standardGewicht }));\nif (!kriterien.length) {\n  throw new Error('Keine Bewertungskriterien für Assistant-ID \"' + d.assistantId + '\" im Tab „Bewertung“ gefunden.');\n}\n\nconst leitfaden = $('Leitfaden laden').all().map((i) => i.json).filter((r) => r.Frage)\n  .sort((a, b) => zahl(a.Nr) - zahl(b.Nr));\n\nconst muss = liste(stelle['Muss-Kriterien']);\nconst gewichtSumme = kriterien.reduce((s, k) => s + k.gewicht, 0) || 1;\n\nconst teile = [\n  'Stelle: ' + stelle.Stelle,\n  'Unternehmen: ' + (stelle.Unternehmen ?? ''),\n  'Aufgaben:\\n' + liste(stelle.Aufgaben).map((a) => '- ' + a).join('\\n'),\n  'Anforderungen:\\n' + liste(stelle.Anforderungen).map((a) => '- ' + a).join('\\n'),\n  'Muss-Kriterien (jeweils prüfen):\\n' + (muss.length ? muss.map((m) => '- ' + m).join('\\n') : '- keine'),\n  'Bewertungskriterien (jedes genau einmal bewerten, Name exakt übernehmen):\\n' + kriterien.map((k, i) =>\n    (i + 1) + '. ' + k.name + ' (Gewicht ' + Math.round((k.gewicht / gewichtSumme) * 100) + ' %, Skala ' + k.min + ' bis ' + k.max + ')\\n'\n    + '   Bewertet: ' + k.bewertet + '\\n'\n    + k.stufen.map((s) => '   ' + s.wert + ' = ' + s.text).join('\\n')\n  ).join('\\n'),\n  'Leitfaden des Interviews (welche Frage welches Kriterium prüft):\\n' + leitfaden.map((l) =>\n    l.Nr + '. ' + l.Thema + ': ' + l.Frage + (l.Kriterium ? ' → ' + l.Kriterium : '')\n  ).join('\\n'),\n];\n\nreturn [{ json: {\n  ...d,\n  stelle: stelle.Stelle,\n  bewertungsgrundlage: teile.join('\\n\\n'),\n  konfig: {\n    kriterien: kriterien.map(({ name, gewicht, min, max }) => ({ name, gewicht, min, max })),\n    muss,\n    einladenAb: Number.isFinite(zahl(stelle['Einladen ab (%)'])) ? zahl(stelle['Einladen ab (%)']) : STANDARD_EINLADEN_AB,\n    absageUnter: Number.isFinite(zahl(stelle['Absage unter (%)'])) ? zahl(stelle['Absage unter (%)']) : STANDARD_ABSAGE_UNTER,\n  },\n} }];"
+          "jsCode": "// Baut aus den Tabs Stellen, Bewertung und Leitfaden die Bewertungsgrundlage für den Analyse-Prompt.\nconst d = $('Daten extrahieren').first().json;\nconst stelle = $('Stelle laden').first().json;\nif (!stelle['Assistant-ID']) {\n  throw new Error('Keine Stelle für Assistant-ID \"' + d.assistantId + '\" im Tab „Stellen“ gefunden (Call ' + d.callId + ').');\n}\n\nconst zahl = (v) => parseFloat(String(v ?? '').replace('%', '').replace(',', '.'));\nconst liste = (text) => String(text ?? '').split(/\\n|;/).map((s) => s.trim()).filter(Boolean);\n\n// Standardwerte, wenn im Tab nichts eingetragen ist.\nconst STANDARD_SKALA = {\n  1: 'Deutlich unter der Erwartung an die Stelle.',\n  2: 'Unter der Erwartung, mit deutlichen Lücken.',\n  3: 'Erfüllt die Erwartung an die Stelle.',\n  4: 'Über der Erwartung.',\n  5: 'Herausragend, deutlich über der Erwartung.',\n};\nconst STANDARD_EINLADEN_AB = 70;\nconst STANDARD_ABSAGE_UNTER = 45;\n\n// Kriterien: Skala aus den gefüllten Spalten \"Score <Zahl>\". Keine gefüllt -> Standardskala 1–5,\n// einzelne Lücken innerhalb der Skala -> Standardtext der Stufe.\nconst roh = $('Bewertung laden').all().map((i) => i.json).filter((r) => r.Kriterium).map((r) => {\n  const gefuellt = Object.keys(r)\n    .map((k) => ({ k, m: k.match(/^Score\\s*(\\d+)$/) }))\n    .filter(({ k, m }) => m && String(r[k] ?? '').trim() !== '')\n    .map(({ k, m }) => ({ wert: Number(m[1]), text: String(r[k]).trim() }));\n  let stufen;\n  if (!gefuellt.length) {\n    stufen = Object.entries(STANDARD_SKALA).map(([wert, text]) => ({ wert: Number(wert), text }));\n  } else {\n    const werte = gefuellt.map((s) => s.wert);\n    stufen = [];\n    for (let w = Math.min(...werte); w <= Math.max(...werte); w++) {\n      stufen.push(gefuellt.find((s) => s.wert === w) ?? { wert: w, text: STANDARD_SKALA[w] ?? 'Zwischenstufe.' });\n    }\n  }\n  const gewicht = zahl(r.Gewicht);\n  return {\n    name: String(r.Kriterium).trim(),\n    gewicht: gewicht > 0 ? gewicht : null,\n    bewertet: String(r['Was wird bewertet'] ?? '').trim() || String(r.Kriterium).trim(),\n    stufen,\n    min: stufen[0].wert,\n    max: stufen[stufen.length - 1].wert,\n  };\n});\n// Leeres Gewicht -> Durchschnitt der eingetragenen Gewichte (alle leer -> gleich gewichtet).\nconst eingetragen = roh.filter((k) => k.gewicht !== null).map((k) => k.gewicht);\nconst standardGewicht = eingetragen.length ? eingetragen.reduce((a, b) => a + b, 0) / eingetragen.length : 1;\nconst kriterien = roh.map((k) => ({ ...k, gewicht: k.gewicht ?? standardGewicht }));\nif (!kriterien.length) {\n  throw new Error('Keine Bewertungskriterien für Assistant-ID \"' + d.assistantId + '\" im Tab „Bewertung“ gefunden.');\n}\n\n// Reihenfolge = Zeilenreihenfolge im Tab.\nconst leitfaden = $('Leitfaden laden').all().map((i) => i.json).filter((r) => r.Frage);\n\nconst muss = liste(stelle['Muss-Kriterien']);\nconst gewichtSumme = kriterien.reduce((s, k) => s + k.gewicht, 0) || 1;\n\nconst teile = [\n  'Stelle: ' + stelle.Stelle,\n  'Unternehmen: ' + (stelle.Unternehmen ?? ''),\n  'Aufgaben:\\n' + liste(stelle.Aufgaben).map((a) => '- ' + a).join('\\n'),\n  'Anforderungen:\\n' + liste(stelle.Anforderungen).map((a) => '- ' + a).join('\\n'),\n  'Muss-Kriterien (jeweils prüfen):\\n' + (muss.length ? muss.map((m) => '- ' + m).join('\\n') : '- keine'),\n  'Bewertungskriterien (jedes genau einmal bewerten, Name exakt übernehmen):\\n' + kriterien.map((k, i) =>\n    (i + 1) + '. ' + k.name + ' (Gewicht ' + Math.round((k.gewicht / gewichtSumme) * 100) + ' %, Skala ' + k.min + ' bis ' + k.max + ')\\n'\n    + '   Bewertet: ' + k.bewertet + '\\n'\n    + k.stufen.map((s) => '   ' + s.wert + ' = ' + s.text).join('\\n')\n  ).join('\\n'),\n  'Leitfaden des Interviews (welche Frage welches Kriterium prüft):\\n' + leitfaden.map((l, i) =>\n    (i + 1) + '. ' + l.Thema + ': ' + l.Frage + (l.Kriterium ? ' → ' + l.Kriterium : '')\n  ).join('\\n'),\n];\n\nreturn [{ json: {\n  ...d,\n  stelle: stelle.Stelle,\n  bewertungsgrundlage: teile.join('\\n\\n'),\n  konfig: {\n    kriterien: kriterien.map(({ name, gewicht, min, max }) => ({ name, gewicht, min, max })),\n    muss,\n    einladenAb: Number.isFinite(zahl(stelle['Einladen ab (%)'])) ? zahl(stelle['Einladen ab (%)']) : STANDARD_EINLADEN_AB,\n    absageUnter: Number.isFinite(zahl(stelle['Absage unter (%)'])) ? zahl(stelle['Absage unter (%)']) : STANDARD_ABSAGE_UNTER,\n  },\n} }];"
         }
       },
       {
@@ -498,7 +507,10 @@
             "name": "Google Sheets Service Account"
           }
         },
-        "alwaysOutputData": true
+        "alwaysOutputData": true,
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 3000
       },
       {
         "id": "fce91331-8f9c-4cee-aa24-c8b611a4009d",
@@ -815,9 +827,9 @@
       }
     ],
     "pinData": null,
-    "versionId": "68db044e-8780-4253-b113-1b10eadc3ac0",
-    "activeVersionId": "68db044e-8780-4253-b113-1b10eadc3ac0",
-    "versionCounter": 2,
+    "versionId": "ebb8e5f4-0ec6-44a4-a02c-17e53f042ec7",
+    "activeVersionId": "ebb8e5f4-0ec6-44a4-a02c-17e53f042ec7",
+    "versionCounter": 5,
     "triggerCount": 1,
     "sourceWorkflowId": null,
     "tags": [],
@@ -842,8 +854,8 @@
       }
     ],
     "versionMetadata": {
-      "name": "v2: Bewertungsgrundlage aus Google Sheets",
-      "description": "Created with 18 nodes: Vapi Webhook, Nur End-of-Call-Report, Duplikat-Check (Call-ID), Daten extrahieren, Call-ID in Execution speichern and 13 more"
+      "name": "Wiederholung bei Netzwerkfehlern für Sheets-Lesezugriffe",
+      "description": "Stelle/Bewertung/Leitfaden laden und Zeile finden versuchen es bei Fehlern bis zu 3-mal. Anlass: kurzer DNS-Ausfall auf dem Server am 16.11. (EAI_AGAIN)."
     }
   }
 ]

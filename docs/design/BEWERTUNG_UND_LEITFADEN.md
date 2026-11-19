@@ -10,8 +10,8 @@ Antwort auf Frage 1 der Mail: Wie wird das Gespräch bewertet und das Bewerberpr
 
 ```
 Google Sheets                      n8n                                   Vapi
-┌──────────────┐  stündlich /     ┌───────────────────────────┐  PATCH   ┌──────────────────┐
-│ Stellen      │──Knopfdruck────► │ Leitfaden synchronisieren │────────► │ System-Prompt:   │
+┌──────────────┐  jede Minute,    ┌───────────────────────────┐  PATCH   ┌──────────────────┐
+│ Stellen      │──bei Änderung──► │ Leitfaden synchronisieren │────────► │ System-Prompt:   │
 │ Leitfaden    │                  └───────────────────────────┘          │ # Stelle         │
 │ Bewertung    │                                                         │ # Leitfaden      │
 └──────┬───────┘                                                         └────────┬─────────┘
@@ -44,11 +44,12 @@ Google Sheets                      n8n                                   Vapi
 Startinhalt: Fachliche Eignung 40 %, Motivation 20 %, Kommunikation 20 %, Arbeitsweise & Zusammenarbeit 20 %, jeweils mit beschriebenen Stufen 1–5.
 Gehalt, Startdatum und Verfügbarkeit sind bewusst **kein** Kriterium: Sie stehen als Eckdaten im Protokoll, senken aber nicht den Score.
 
-### Leitfaden (eine Zeile pro Frage)
+### Leitfaden (eine Zeile pro Frage, in Gesprächsreihenfolge)
+
+Die Reihenfolge der Zeilen ist die Reihenfolge im Gespräch. Umsortieren = Zeilen verschieben.
 
 | Spalte | Bedeutung |
 | --- | --- |
-| Nr | Reihenfolge |
 | Thema, Frage | wird dem Agent so vorgegeben – alle Bewerber bekommen dieselben Kernfragen (strukturiertes Interview) |
 | Kriterium | welches Bewertungskriterium die Frage prüft |
 | Hinweis | Verhalten und Nachfragen für den Agent |

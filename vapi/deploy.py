@@ -21,6 +21,7 @@ Usage:
   python vapi/deploy.py --dry-run          # build payload and print summary, no API calls
   python vapi/deploy.py --verify           # only GET + verify the existing assistant
   python vapi/deploy.py --reset-sections   # overwrite the synced sections with system-prompt.md
+  python vapi/deploy.py --discard-draft    # delete the stale dashboard draft before testing there
 
 Secrets are never printed: every line of output passes through redact().
 Note: PATCH replaces the top-level objects that are sent, but fields that
@@ -187,6 +188,14 @@ def live_system_prompt(api_key: str, assistant_id: str) -> str:
     return ""
 
 
+def discard_drafts(api_key: str, assistant_id: str) -> None:
+    """Delete the dashboard drafts: "Talk to Assistant" tests the draft, not the latest version."""
+    drafts = api("GET", f"/assistant/{assistant_id}/draft", api_key).get("results", [])
+    for draft in drafts:
+        api("DELETE", f"/assistant/{assistant_id}/draft/{draft['id']}", api_key)
+    say(f"Dashboard-Entwürfe verworfen: {len(drafts)}")
+
+
 def build_payload(credential_id: str, live_prompt: str = "") -> dict:
     payload = strip_private_keys(json.loads(ASSISTANT_PATH.read_text(encoding="utf-8")))
     prompt = load_prompt()
@@ -257,8 +266,9 @@ def print_summary(stored: dict) -> None:
         ("Prompt", f"{len(prompt)} Zeichen"),
         ("Voice", f"{voice.get('provider')}/{voice.get('model')} voiceId={voice.get('voiceId')} "
                   f"fallback={fallback_voices}"),
-        ("Transcriber", f"{trans.get('provider')}/{trans.get('model')} languages={trans.get('languages')} "
-                        f"keyterms={len(trans.get('keyterm') or [])}"),
+        ("Transcriber", f"{trans.get('provider')}/{trans.get('model') or trans.get('speechModel')} "
+                        f"languages={trans.get('languages') or trans.get('languageCodes')} "
+                        f"keyterms={len(trans.get('keyterm') or trans.get('keytermsPrompt') or [])}"),
         ("Server", f"{get_path(stored, 'server.url')} credentialId={get_path(stored, 'server.credentialId')}"),
         ("serverMessages", stored.get("serverMessages")),
         ("maxDurationSeconds", stored.get("maxDurationSeconds")),
@@ -337,6 +347,12 @@ def main() -> None:
         return
 
     assistant_id = env.get("VAPI_ASSISTANT_ID")
+    if "--discard-draft" in args:
+        if not assistant_id:
+            fail("VAPI_ASSISTANT_ID fehlt in .env.")
+        discard_drafts(api_key, assistant_id)
+        return
+
     live_prompt = ""
     if assistant_id and "--reset-sections" not in args:
         live_prompt = live_system_prompt(api_key, assistant_id)

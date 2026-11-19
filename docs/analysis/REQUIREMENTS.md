@@ -136,7 +136,7 @@ Die Stelle wird über die Assistant-ID zugeordnet (ein Assistant pro Stelle; fü
 Wird derselbe Report mehrfach zugestellt, entsteht nur ein Protokoll und eine Slack-Nachricht (Prüfung über die Call-ID).
 
 **REQ-3.8 – Ablage** `MUST`
-Pro Gespräch wird eine Zeile in **Google Sheets** mit Protokoll, Transkript und Aufnahme-Link gespeichert.
+Pro Gespräch wird eine Zeile in **Google Sheets** mit Protokoll, Transkript und Aufnahme-Link gespeichert. Der Aufnahme-Link zeigt auf den Workflow „Vapi – Aufnahme abrufen“, weil Vapi nur 30 Minuten gültige Links ausgibt.
 
 **REQ-3.9 – Error-Workflow** `SHOULD`
 Ein separater Workflow mit Error Trigger meldet fehlgeschlagene Ausführungen mit Call-ID in einem Slack-Channel. Kein Gespräch geht unbemerkt verloren.
@@ -159,7 +159,7 @@ Die Analyse nutzt das vollständige Transkript mit Sprecherzuordnung sowie die M
 Stellenprofil, Muss-Kriterien, Bewertungskriterien (Gewicht, Skala mit Stufenbeschreibungen) und Interview-Leitfaden werden in eigenen Tabs der Google-Tabelle gepflegt („Stellen“, „Bewertung“, „Leitfaden“) und je Assistant-ID dynamisch geladen. Leere Felder bekommen Standardwerte (z. B. Skala 1–5). Jedes Kriterium bekommt eine Stufe auf seiner Skala und eine kurze Begründung mit Bezug auf eine Aussage aus dem Gespräch. Gesamtscore (in %) und Empfehlung berechnet n8n nach den Regeln aus dem Tab „Stellen“. Details: [BEWERTUNG_UND_LEITFADEN.md](../design/BEWERTUNG_UND_LEITFADEN.md).
 
 **REQ-4.3a – Leitfaden-Sync nach Vapi** `SHOULD`
-Stellenfakten und Leitfaden aus der Tabelle werden per n8n-Workflow (stündlich und manuell) in den System-Prompt des Vapi-Assistants übernommen, ohne n8n-Aufruf während des Gesprächs.
+Stellenfakten und Leitfaden aus der Tabelle werden per n8n-Workflow in den System-Prompt des Vapi-Assistants übernommen, ohne n8n-Aufruf während des Gesprächs. Der Workflow prüft jede Minute und schreibt nur bei Änderungen, eine Änderung in der Tabelle ist also nach spätestens einer Minute beim Agent. (Google Sheets kann n8n nicht von selbst benachrichtigen; ein sofortiger Push wäre nur per Apps Script in der Tabelle möglich.)
 
 **REQ-4.4 – Strukturiertes Protokoll** `MUST`
 Das Ergebnis folgt einem festen JSON-Schema (im Structured Output Parser hinterlegt) und enthält:
