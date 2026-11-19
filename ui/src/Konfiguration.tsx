@@ -1,72 +1,70 @@
 import { useEffect, useMemo, useState } from 'react';
-import { speichereStelle } from './api';
-import type { Frage, Kriterium, Stelle } from './types';
+import { legeStelleAn, loescheStelle, speichereStelle } from './api';
+import type { Stelle } from './types';
+import Dialog from './Dialog';
+import { Feld } from './Bausteine';
+import StelleAnsicht from './KonfigStelle';
+import Bewertung from './KonfigBewertung';
+import Leitfaden from './KonfigLeitfaden';
 
-const leeresKriterium = (): Kriterium => ({ kriterium: '', gewicht: null, beschreibung: '', score1: '', score2: '', score3: '', score4: '', score5: '' });
-const leereFrage = (): Frage => ({ thema: '', frage: '', kriterium: '', hinweis: '' });
-const STUFEN = ['score1', 'score2', 'score3', 'score4', 'score5'] as const;
+type Reiter = 'stelle' | 'bewertung' | 'leitfaden';
+type Meldung = { art: 'ok' | 'fehler'; text: string };
+type Offen = { art: 'neu' } | { art: 'loeschen' } | { art: 'verwerfen'; weiter: () => void } | null;
 
-function verschieben<T>(liste: T[], i: number, richtung: -1 | 1): T[] {
-  const j = i + richtung;
-  if (j < 0 || j >= liste.length) return liste;
-  const neu = [...liste];
-  [neu[i], neu[j]] = [neu[j], neu[i]];
-  return neu;
-}
-
-export default function Konfiguration({ stellen, onGespeichert }: { stellen: Stelle[]; onGespeichert: () => Promise<void> }) {
-  const [auswahl, setAuswahl] = useState<string>('');
+export default function Konfiguration({ stellen, geladen, onNeuLaden }: { stellen: Stelle[]; geladen: boolean; onNeuLaden: () => Promise<void> }) {
+  const [auswahl, setAuswahl] = useState('');
   const [entwurf, setEntwurf] = useState<Stelle | null>(null);
+  const [reiter, setReiter] = useState<Reiter>('stelle');
   const [speichert, setSpeichert] = useState(false);
-  const [meldung, setMeldung] = useState<{ art: 'ok' | 'fehler'; text: string } | null>(null);
-  // Neue Stellen gibt es erst nach dem ersten Speichern in den Tabellen; bis dahin nur hier.
-  const [neue, setNeue] = useState<Stelle[]>([]);
+  const [meldung, setMeldung] = useState<Meldung | null>(null);
+  const [offen, setOffen] = useState<Offen>(null);
 
-  const alle = useMemo(() => [...stellen, ...neue.filter((n) => !stellen.some((s) => s.assistantId === n.assistantId))], [stellen, neue]);
-  const original = useMemo(() => alle.find((s) => s.assistantId === auswahl) ?? null, [alle, auswahl]);
+  const original = useMemo(() => stellen.find((s) => s.assistantId === auswahl) ?? null, [stellen, auswahl]);
+  const geaendert = useMemo(() => JSON.stringify(entwurf) !== JSON.stringify(original), [entwurf, original]);
 
+  // Erste Stelle vorauswählen; nach dem Löschen auf eine verbleibende springen.
   useEffect(() => {
-    if (!auswahl && stellen.length) setAuswahl(stellen[0].assistantId);
+    if (stellen.length && !stellen.some((s) => s.assistantId === auswahl)) setAuswahl(stellen[0].assistantId);
   }, [stellen, auswahl]);
-
-  const neueStelle = () => {
-    const id = window.prompt('Assistant-ID der neuen Stelle (angelegt mit python vapi/deploy.py --job <stelle>):')?.trim();
-    if (!id) return;
-    if (!alle.some((s) => s.assistantId === id)) {
-      setNeue([...neue, { assistantId: id, stelle: '', unternehmen: '', aufgaben: '', anforderungen: '', einladenAb: 70, absageUnter: 45, kriterien: [leeresKriterium()], leitfaden: [leereFrage()] }]);
-    }
-    setAuswahl(id);
-  };
 
   useEffect(() => {
     setEntwurf(original ? structuredClone(original) : null);
   }, [original]);
 
-  const geaendert = useMemo(() => JSON.stringify(entwurf) !== JSON.stringify(original), [entwurf, original]);
+  useEffect(() => {
+    if (!geaendert) return;
+    const warnen = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', warnen);
+    return () => window.removeEventListener('beforeunload', warnen);
+  }, [geaendert]);
 
-  if (!stellen.length) return <div className="leer">Lade Konfiguration …</div>;
+  useEffect(() => {
+    if (meldung?.art !== 'ok') return;
+    const t = setTimeout(() => setMeldung(null), 6000);
+    return () => clearTimeout(t);
+  }, [meldung]);
+
+  if (!geladen) return <div className="leer">Lade Konfiguration …</div>;
+  if (!stellen.length) return <div className="leer">Noch keine Stelle angelegt. Die erste Stelle entsteht mit python vapi/deploy.py --job &lt;stelle&gt;.</div>;
   if (!entwurf) return null;
 
-  const setze = (teil: Partial<Stelle>) => setEntwurf({ ...entwurf, ...teil });
-  const setzeKriterium = (i: number, teil: Partial<Kriterium>) =>
-    setze({ kriterien: entwurf.kriterien.map((k, j) => (j === i ? { ...k, ...teil } : k)) });
-  const setzeFrage = (i: number, teil: Partial<Frage>) => setze({ leitfaden: entwurf.leitfaden.map((f, j) => (j === i ? { ...f, ...teil } : f)) });
-
-  // Leere Gewichte zählen wie der Durchschnitt der übrigen (gleiche Regel wie in der Auswertung).
-  const eingetragen = entwurf.kriterien.map((k) => k.gewicht).filter((g): g is number => typeof g === 'number' && g > 0);
-  const standard = eingetragen.length ? eingetragen.reduce((a, b) => a + b, 0) / eingetragen.length : 1;
-  const gewichte = entwurf.kriterien.map((k) => (typeof k.gewicht === 'number' && k.gewicht > 0 ? k.gewicht : standard));
-  const summe = gewichte.reduce((a, b) => a + b, 0) || 1;
+  const setze = (teil: Partial<Stelle>) => {
+    setEntwurf((e) => (e ? { ...e, ...teil } : e));
+    if (meldung?.art === 'fehler') setMeldung(null);
+  };
+  const verwerfen = () => setEntwurf(original ? structuredClone(original) : null);
+  // Ungespeicherte Änderungen gehen beim Wechsel verloren, deshalb vorher nachfragen.
+  const mitVerwerfen = (weiter: () => void) => (geaendert ? setOffen({ art: 'verwerfen', weiter }) : weiter());
 
   const speichern = async () => {
     setSpeichert(true);
     setMeldung(null);
     try {
       const r = await speichereStelle(entwurf);
-      await onGespeichert();
+      await onNeuLaden();
       setMeldung(
         r.sync === 'ok'
-          ? { art: 'ok', text: `Gespeichert: ${r.kriterien} Kriterien, ${r.fragen} Fragen. Der Agent nutzt den neuen Leitfaden ab dem nächsten Anruf.` }
+          ? { art: 'ok', text: 'Gespeichert. Der Agent nutzt den neuen Stand ab dem nächsten Anruf.' }
           : { art: 'fehler', text: `Gespeichert, aber die Übertragung an Vapi ist fehlgeschlagen: ${r.syncFehler}` },
       );
     } catch (e) {
@@ -76,170 +74,254 @@ export default function Konfiguration({ stellen, onGespeichert }: { stellen: Ste
     }
   };
 
+  const reiterListe: [Reiter, string, number | null][] = [
+    ['stelle', 'Stelle', null],
+    ['bewertung', 'Bewertung', entwurf.kriterien.length],
+    ['leitfaden', 'Leitfaden', entwurf.leitfaden.length],
+  ];
+
   return (
     <section className="konfig">
-      <div className="abschnitt-kopf">
-        <h1>Konfiguration</h1>
-        <div className="auswahl">
-          <select value={auswahl} onChange={(e) => setAuswahl(e.target.value)} disabled={geaendert}>
-            {alle.map((s) => (
-              <option key={s.assistantId} value={s.assistantId}>
-                {s.stelle || `Neue Stelle (${s.assistantId.slice(0, 8)}…)`}
-              </option>
-            ))}
-          </select>
-          <button className="knopf zweit" onClick={neueStelle} disabled={geaendert}>
-            + Neue Stelle
+      <nav className="stellen" aria-label="Stellen">
+        <p className="stellen-titel">Stellen</p>
+        {stellen.map((s) => {
+          const aktiv = s.assistantId === auswahl;
+          const zeige = aktiv ? entwurf : s;
+          return (
+            <button
+              key={s.assistantId}
+              className={aktiv ? 'stelle-eintrag aktiv' : 'stelle-eintrag'}
+              aria-current={aktiv}
+              onClick={() => !aktiv && mitVerwerfen(() => setAuswahl(s.assistantId))}
+            >
+              <span className="stelle-name">
+                {zeige.stelle || 'Ohne Bezeichnung'}
+                {aktiv && geaendert && <span className="ungespeichert" title="Ungespeicherte Änderungen" />}
+              </span>
+              <span className="stelle-meta">
+                {zeige.kriterien.length} Kriterien · {zeige.leitfaden.length} Fragen
+              </span>
+            </button>
+          );
+        })}
+        <button className="stelle-neu" onClick={() => mitVerwerfen(() => setOffen({ art: 'neu' }))}>
+          + Neue Stelle
+        </button>
+      </nav>
+
+      <div className="stelle-bereich">
+        <div className="stelle-kopf">
+          <div>
+            <h1>{entwurf.stelle || 'Ohne Bezeichnung'}</h1>
+            <p className="assistant-id">
+              Vapi-Assistant <code>{entwurf.assistantId}</code>
+            </p>
+          </div>
+          <button className="text-knopf gefahr" onClick={() => setOffen({ art: 'loeschen' })}>
+            Stelle löschen
           </button>
         </div>
+
+        <div className="unterreiter" role="tablist">
+          {reiterListe.map(([r, text, zahl]) => (
+            <button key={r} role="tab" aria-selected={reiter === r} className={reiter === r ? 'aktiv' : ''} onClick={() => setReiter(r)}>
+              {text}
+              {zahl !== null && <span className="zahl">{zahl}</span>}
+            </button>
+          ))}
+        </div>
+
+        {reiter === 'stelle' && <StelleAnsicht entwurf={entwurf} setze={setze} />}
+        {reiter === 'bewertung' && <Bewertung entwurf={entwurf} setze={setze} />}
+        {reiter === 'leitfaden' && <Leitfaden entwurf={entwurf} setze={setze} />}
       </div>
 
-      <div className="panel">
-        <h2>Stelle</h2>
-        <div className="feld">
-          <label>Bezeichnung</label>
-          <input value={entwurf.stelle} onChange={(e) => setze({ stelle: e.target.value })} />
+      {(geaendert || meldung) && (
+        <div className={`speicherleiste ${meldung?.art ?? ''}`} role="status">
+          <span className="speicherleiste-text">{meldung ? meldung.text : 'Ungespeicherte Änderungen'}</span>
+          {geaendert ? (
+            <>
+              <button className="knopf geist" disabled={speichert} onClick={verwerfen}>
+                Verwerfen
+              </button>
+              <button className="knopf hell" disabled={speichert} onClick={speichern}>
+                {speichert ? 'Speichert …' : 'Speichern'}
+              </button>
+            </>
+          ) : (
+            <button className="schliessen hell" aria-label="Meldung schließen" onClick={() => setMeldung(null)}>
+              ✕
+            </button>
+          )}
         </div>
-        <div className="feld">
-          <label>Unternehmen</label>
-          <textarea rows={2} value={entwurf.unternehmen} onChange={(e) => setze({ unternehmen: e.target.value })} />
-        </div>
-        <div className="spalten">
-          <div className="feld">
-            <label>Aufgaben (eine pro Zeile)</label>
-            <textarea rows={8} value={entwurf.aufgaben} onChange={(e) => setze({ aufgaben: e.target.value })} />
-          </div>
-          <div className="feld">
-            <label>Anforderungen (eine pro Zeile)</label>
-            <textarea rows={8} value={entwurf.anforderungen} onChange={(e) => setze({ anforderungen: e.target.value })} />
-          </div>
-        </div>
-        <div className="spalten drei">
-          <div className="feld">
-            <label>Einladen ab (%)</label>
-            <input type="number" min={0} max={100} value={entwurf.einladenAb ?? ''} onChange={(e) => setze({ einladenAb: e.target.value === '' ? null : Number(e.target.value) })} />
-          </div>
-          <div className="feld">
-            <label>Absage unter (%)</label>
-            <input type="number" min={0} max={100} value={entwurf.absageUnter ?? ''} onChange={(e) => setze({ absageUnter: e.target.value === '' ? null : Number(e.target.value) })} />
-          </div>
-          <div className="feld">
-            <label>Vapi-Assistant</label>
-            <input value={entwurf.assistantId} readOnly className="leise" />
-          </div>
-        </div>
-      </div>
+      )}
 
-      <div className="panel">
-        <div className="panel-kopf">
-          <h2>Bewertungskriterien</h2>
-          <button className="knopf zweit" onClick={() => setze({ kriterien: [...entwurf.kriterien, leeresKriterium()] })}>
-            + Kriterium
-          </button>
-        </div>
-        {entwurf.kriterien.map((k, i) => (
-          <div className="eintrag" key={i}>
-            <div className="eintrag-kopf">
-              <span className="nummer">{i + 1}</span>
-              <input className="eintrag-titel" placeholder="Name des Kriteriums" value={k.kriterium} onChange={(e) => setzeKriterium(i, { kriterium: e.target.value })} />
-              <label className="gewicht">
-                Gewicht
-                <input type="number" min={0} value={k.gewicht ?? ''} onChange={(e) => setzeKriterium(i, { gewicht: e.target.value === '' ? null : Number(e.target.value) })} />
-                <span className="leise">= {Math.round((gewichte[i] / summe) * 100)} %</span>
-              </label>
-              <Werkzeuge
-                hoch={() => setze({ kriterien: verschieben(entwurf.kriterien, i, -1) })}
-                runter={() => setze({ kriterien: verschieben(entwurf.kriterien, i, 1) })}
-                weg={() => setze({ kriterien: entwurf.kriterien.filter((_, j) => j !== i) })}
-              />
-            </div>
-            <div className="feld">
-              <label>Was wird bewertet</label>
-              <textarea rows={2} value={k.beschreibung} onChange={(e) => setzeKriterium(i, { beschreibung: e.target.value })} />
-            </div>
-            <div className="stufen">
-              {STUFEN.map((s, n) => (
-                <div className="feld" key={s}>
-                  <label>Stufe {n + 1}</label>
-                  <textarea rows={6} value={k[s]} placeholder="leer = Standardtext" onChange={(e) => setzeKriterium(i, { [s]: e.target.value })} />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="panel">
-        <div className="panel-kopf">
-          <h2>Leitfaden</h2>
-          <button className="knopf zweit" onClick={() => setze({ leitfaden: [...entwurf.leitfaden, leereFrage()] })}>
-            + Frage
-          </button>
-        </div>
-        <p className="leise">Der Agent stellt die Fragen in dieser Reihenfolge. Danach folgt automatisch der Abschluss.</p>
-        {entwurf.leitfaden.map((f, i) => (
-          <div className="eintrag" key={i}>
-            <div className="eintrag-kopf">
-              <span className="nummer">{i + 1}</span>
-              <input className="eintrag-titel" placeholder="Thema" value={f.thema} onChange={(e) => setzeFrage(i, { thema: e.target.value })} />
-              <select value={f.kriterium} onChange={(e) => setzeFrage(i, { kriterium: e.target.value })}>
-                <option value="">kein Kriterium</option>
-                {entwurf.kriterien
-                  .filter((k) => k.kriterium.trim())
-                  .map((k) => (
-                    <option key={k.kriterium} value={k.kriterium}>
-                      {k.kriterium}
-                    </option>
-                  ))}
-              </select>
-              <Werkzeuge
-                hoch={() => setze({ leitfaden: verschieben(entwurf.leitfaden, i, -1) })}
-                runter={() => setze({ leitfaden: verschieben(entwurf.leitfaden, i, 1) })}
-                weg={() => setze({ leitfaden: entwurf.leitfaden.filter((_, j) => j !== i) })}
-              />
-            </div>
-            <div className="spalten">
-              <div className="feld">
-                <label>Frage</label>
-                <textarea rows={2} value={f.frage} onChange={(e) => setzeFrage(i, { frage: e.target.value })} />
-              </div>
-              <div className="feld">
-                <label>Hinweis für den Agent</label>
-                <textarea rows={2} value={f.hinweis} onChange={(e) => setzeFrage(i, { hinweis: e.target.value })} />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="leiste">
-        {meldung && <div className={`hinweis ${meldung.art}`}>{meldung.text}</div>}
-        <div className="leiste-knoepfe">
-          <span className="leise">{geaendert ? 'Ungespeicherte Änderungen' : 'Alles gespeichert'}</span>
-          <button className="knopf zweit" disabled={!geaendert || speichert} onClick={() => setEntwurf(original ? structuredClone(original) : null)}>
-            Verwerfen
-          </button>
-          <button className="knopf" disabled={!geaendert || speichert} onClick={speichern}>
-            {speichert ? 'Speichert …' : 'Speichern und an Vapi übertragen'}
-          </button>
-        </div>
-      </div>
+      {offen?.art === 'neu' && (
+        <NeueStelleDialog
+          stellen={stellen}
+          vorauswahl={auswahl}
+          onSchliessen={() => setOffen(null)}
+          onAngelegt={async (id, syncOk) => {
+            await onNeuLaden();
+            setAuswahl(id);
+            setReiter('stelle');
+            setOffen(null);
+            setMeldung(
+              syncOk
+                ? { art: 'ok', text: 'Stelle und Vapi-Assistant angelegt. Trag jetzt Aufgaben und Anforderungen ein.' }
+                : { art: 'fehler', text: 'Assistant angelegt, aber der Leitfaden kam nicht in Vapi an. Speicher die Stelle einmal, dann wird er erneut übertragen.' },
+            );
+          }}
+        />
+      )}
+      {offen?.art === 'loeschen' && (
+        <LoeschenDialog
+          stelle={original ?? entwurf}
+          onSchliessen={() => setOffen(null)}
+          onGeloescht={async () => {
+            await onNeuLaden();
+            setOffen(null);
+            setMeldung({ art: 'ok', text: 'Stelle und Vapi-Assistant gelöscht.' });
+          }}
+        />
+      )}
+      {offen?.art === 'verwerfen' && (
+        <Dialog
+          titel="Änderungen verwerfen?"
+          onSchliessen={() => setOffen(null)}
+          fuss={
+            <>
+              <button className="knopf zweit" onClick={() => setOffen(null)}>
+                Weiter bearbeiten
+              </button>
+              <button
+                className="knopf gefahr"
+                onClick={() => {
+                  const weiter = offen.weiter;
+                  verwerfen();
+                  setOffen(null);
+                  weiter();
+                }}
+              >
+                Verwerfen
+              </button>
+            </>
+          }
+        >
+          <p>Die ungespeicherten Änderungen an „{entwurf.stelle}“ gehen verloren.</p>
+        </Dialog>
+      )}
     </section>
   );
 }
 
-function Werkzeuge({ hoch, runter, weg }: { hoch: () => void; runter: () => void; weg: () => void }) {
+function NeueStelleDialog({
+  stellen,
+  vorauswahl,
+  onAngelegt,
+  onSchliessen,
+}: {
+  stellen: Stelle[];
+  vorauswahl: string;
+  onAngelegt: (assistantId: string, syncOk: boolean) => Promise<void>;
+  onSchliessen: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [vorlage, setVorlage] = useState(vorauswahl);
+  const [laeuft, setLaeuft] = useState(false);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const bereit = name.trim() !== '' && !laeuft;
+
+  const anlegen = async () => {
+    setLaeuft(true);
+    setFehler(null);
+    try {
+      const r = await legeStelleAn(name.trim(), vorlage);
+      await onAngelegt(r.assistantId, r.sync === 'ok');
+    } catch (e) {
+      setFehler((e as Error).message);
+      setLaeuft(false);
+    }
+  };
+
   return (
-    <div className="werkzeuge">
-      <button title="Nach oben" onClick={hoch}>
-        ↑
-      </button>
-      <button title="Nach unten" onClick={runter}>
-        ↓
-      </button>
-      <button title="Entfernen" className="weg" onClick={weg}>
-        ✕
-      </button>
-    </div>
+    <Dialog
+      titel="Neue Stelle"
+      unter="Legt in Vapi einen eigenen Interview-Assistant an."
+      gesperrt={laeuft}
+      onSchliessen={onSchliessen}
+      fuss={
+        <>
+          <button className="knopf zweit" disabled={laeuft} onClick={onSchliessen}>
+            Abbrechen
+          </button>
+          <button className="knopf" disabled={!bereit} onClick={anlegen}>
+            {laeuft ? 'Wird angelegt …' : 'Anlegen'}
+          </button>
+        </>
+      }
+    >
+      <Feld label="Bezeichnung">
+        <input
+          value={name}
+          placeholder="z. B. Werkstudent Marketing (m/w/d)"
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && bereit && anlegen()}
+        />
+      </Feld>
+      <Feld label="Vorlage" hilfe="Übernimmt Stimme, Gesprächsstil und Dauer sowie Kriterien und Leitfaden. Aufgaben und Anforderungen trägst du danach selbst ein.">
+        <select value={vorlage} onChange={(e) => setVorlage(e.target.value)}>
+          {stellen.map((s) => (
+            <option key={s.assistantId} value={s.assistantId}>
+              {s.stelle}
+            </option>
+          ))}
+        </select>
+      </Feld>
+      {fehler && <div className="hinweis fehler">{fehler}</div>}
+    </Dialog>
+  );
+}
+
+function LoeschenDialog({ stelle, onGeloescht, onSchliessen }: { stelle: Stelle; onGeloescht: () => Promise<void>; onSchliessen: () => void }) {
+  const [laeuft, setLaeuft] = useState(false);
+  const [fehler, setFehler] = useState<string | null>(null);
+
+  const loeschen = async () => {
+    setLaeuft(true);
+    setFehler(null);
+    try {
+      await loescheStelle(stelle.assistantId);
+      await onGeloescht();
+    } catch (e) {
+      setFehler((e as Error).message);
+      setLaeuft(false);
+    }
+  };
+
+  return (
+    <Dialog
+      titel="Stelle löschen?"
+      gesperrt={laeuft}
+      onSchliessen={onSchliessen}
+      fuss={
+        <>
+          <button className="knopf zweit" disabled={laeuft} onClick={onSchliessen}>
+            Abbrechen
+          </button>
+          <button className="knopf gefahr" disabled={laeuft} onClick={loeschen}>
+            {laeuft ? 'Wird gelöscht …' : 'Endgültig löschen'}
+          </button>
+        </>
+      }
+    >
+      <p>„{stelle.stelle}“ wird endgültig entfernt:</p>
+      <ul className="punkte">
+        <li>der Interview-Assistant in Vapi; Anrufe auf ihn funktionieren danach nicht mehr</li>
+        <li>Angaben zur Stelle, Kriterien und Leitfaden</li>
+      </ul>
+      <p className="leise">Bereits geführte Protokolle bleiben erhalten.</p>
+      {fehler && <div className="hinweis fehler">{fehler}</div>}
+    </Dialog>
   );
 }

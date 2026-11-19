@@ -34,12 +34,19 @@ Vapi ──status-update / end-of-call-report──► Workflow „Bewerberinter
 
 Ein verspätetes `ended` setzt ein fertiges Protokoll nicht zurück (Knoten „Status bestimmen“).
 
-**Konfiguration** (`#konfiguration`): eine Stelle auswählen und bearbeiten.
+**Konfiguration** (`#konfiguration`): links die Stellen, rechts die gewählte Stelle in drei Reitern. Die Seite zeigt nur Lesefassungen; bearbeitet wird in Dialogen.
 
-- Stelle: Bezeichnung, Unternehmen, Aufgaben, Anforderungen, Schwellen „Einladen ab“ und „Absage unter“.
-- Kriterien: Name, Gewicht (mit Anteil in %), Beschreibung, Stufen 1–5; verschieben, hinzufügen, entfernen.
-- Leitfaden: Thema, Frage, Kriterium (Auswahl), Hinweis für den Agent; Reihenfolge per Pfeil.
-- „Speichern und an Vapi übertragen“: n8n prüft die Eingaben (Pflichtfelder, eindeutige Kriterien, Leitfaden verweist nur auf vorhandene Kriterien, Schwellen), ersetzt Kriterien und Leitfaden der Stelle und startet den Leitfaden-Sync. Der Agent nutzt die Änderung ab dem nächsten Anruf.
+| Reiter | Ansicht | Dialog |
+| --- | --- | --- |
+| Stelle | Unternehmen, Aufgaben, Anforderungen als Listen | Bezeichnung, Unternehmen, Aufgaben, Anforderungen |
+| Bewertung | Skala Absage / Prüfen / Einladen; Kriterien als Zeilen mit Anteil am Gesamtscore | Schwellen mit Vorschau; Kriterium mit Name, Gewicht, Beschreibung, Stufen 1–5 |
+| Leitfaden | Fragen in Reihenfolge mit Kriterium und Hinweis-Markierung, danach der automatische Abschluss | Thema, Frage, Kriterium, Hinweis für den Agent |
+
+- Reihenfolge per Pfeil am Zeilenende (erscheint bei Hover). Umbenennen eines Kriteriums zieht die Verweise im Leitfaden mit; Löschen entfernt sie.
+- Dialoge ändern nur den Entwurf. Dann erscheint unten die Leiste „Ungespeicherte Änderungen“ mit Verwerfen und Speichern. Speichern: n8n prüft die Eingaben (Pflichtfelder, eindeutige Kriterien, Leitfaden verweist nur auf vorhandene Kriterien, Schwellen), ersetzt Kriterien und Leitfaden der Stelle und startet den Leitfaden-Sync. Der Agent nutzt die Änderung ab dem nächsten Anruf.
+- Wechsel der Stelle mit ungespeicherten Änderungen fragt nach; Neuladen der Seite warnt der Browser. Der Wechsel zu „Protokolle“ behält den Entwurf.
+- **+ Neue Stelle:** Bezeichnung und Vorlage (eine bestehende Stelle). n8n kopiert den Vapi-Assistant der Vorlage (Stimme, Modell, Transcriber, Gesprächsstil, Dauer), setzt Name, Begrüßung, Voicemail, Transcriber-Kontext und Fachbegriffe neu und übernimmt Unternehmen, Schwellen, Kriterien und Leitfaden. Aufgaben und Anforderungen bleiben leer. Danach läuft der Sync, die Stelle ist sofort anrufbar.
+- **Stelle löschen:** löscht den Vapi-Assistant und die Zeilen in Stellen, Kriterien und Leitfaden. Abgelehnt, solange eine Vapi-Telefonnummer auf den Assistant zeigt. Protokolle bleiben.
 
 ## API (Workflow „UI – API“)
 
@@ -48,9 +55,12 @@ Ein verspätetes `ended` setzt ein fertiges Protokoll nicht zurück (Knoten „S
 | `GET /webhook/ui/protokolle` | `{ protokolle: [...] }`, Feld `protokoll` als ausgepacktes JSON |
 | `GET /webhook/ui/config` | `{ stellen: [{ ...stelle, kriterien: [...], leitfaden: [...] }] }` |
 | `POST /webhook/ui/config` | Body `{ assistantId, stelle, kriterien, leitfaden }` → `{ ok, kriterien, fragen, sync }` oder 400 `{ ok: false, fehler }` |
+| `POST /webhook/ui/stelle` | Body `{ stelle, vorlage }` (Vorlage = Assistant-ID) → `{ ok, assistantId, name, sync }`; 400 bei fehlenden Angaben, 502 wenn Vapi ablehnt |
+| `DELETE /webhook/ui/stelle?assistantId=…` | `{ ok, assistantId }`; 400 ohne ID oder bei verbundener Telefonnummer, 502 wenn Vapi ablehnt. Ein schon gelöschter Assistant (404) gilt als erledigt |
 
 ## Offen
 
 - DNS-Name (z. B. `interview.mal-zeta.de`) mit HTTPS über den vorhandenen nginx und certbot.
 - Login, bevor die IP-Sperre fällt.
-- Neue Stellen legt weiterhin `deploy.py --job` als Vapi-Assistant an. In der UI trägt „+ Neue Stelle“ dessen Assistant-ID ein; die Stelle landet erst beim ersten Speichern in den Data Tables.
+- In der UI angelegte Assistants haben keine Datei in `vapi/jobs/`. Änderungen an `vapi/assistant.json` erreichen sie über `deploy.py` nicht; sie behalten den Stand der Vorlage vom Zeitpunkt des Anlegens.
+- Fachbegriffe für die Spracherkennung sind bei neuen Stellen nur „Everlast“; ein Feld dafür in der UI fehlt noch.

@@ -16,6 +16,7 @@ export default function App() {
     setAnsichtState(a);
   };
   const [stellen, setStellen] = useState<Stelle[]>([]);
+  const [geladen, setGeladen] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
 
   const neuLaden = () =>
@@ -24,7 +25,8 @@ export default function App() {
         setStellen(s);
         setFehler(null);
       })
-      .catch((e: Error) => setFehler(e.message));
+      .catch((e: Error) => setFehler(e.message))
+      .finally(() => setGeladen(true));
 
   useEffect(() => {
     neuLaden();
@@ -51,11 +53,13 @@ export default function App() {
       </header>
       <main className="inhalt">
         {fehler && <div className="hinweis fehler">Konfiguration konnte nicht geladen werden: {fehler}</div>}
-        {ansicht === 'protokolle' ? (
+        {/* Beide Ansichten bleiben gemountet, damit ein Entwurf in der Konfiguration den Reiterwechsel übersteht. */}
+        <div hidden={ansicht !== 'protokolle'}>
           <Protokolle stellen={stellen} />
-        ) : (
-          <Konfiguration stellen={stellen} onGespeichert={neuLaden} />
-        )}
+        </div>
+        <div hidden={ansicht !== 'konfiguration'}>
+          <Konfiguration stellen={stellen} geladen={geladen} onNeuLaden={neuLaden} />
+        </div>
       </main>
     </div>
   );

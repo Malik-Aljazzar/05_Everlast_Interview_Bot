@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-11-19T20:47:34.111Z",
+    "updatedAt": "2026-11-19T21:45:48.657Z",
     "createdAt": "2026-11-19T20:47:00.306Z",
     "id": "UoiiLcuq2OvVMPeC",
     "name": "UI – API",
@@ -568,6 +568,783 @@
             "responseCode": 400
           }
         }
+      },
+      {
+        "id": "2078e2c7-7ab6-4c04-8b5e-d53f61c9ff8b",
+        "name": "POST Stelle",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          960
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "ui/stelle",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "c44534f1-4f5f-4d32-a925-1e5b2739b46c"
+      },
+      {
+        "id": "7bbf2561-5255-4fca-8778-114d955649b5",
+        "name": "Neue Stelle prüfen",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          960
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Neue Stelle aus der UI: Bezeichnung und Vorlage (Assistant-ID einer bestehenden Stelle).\nconst b = $input.first().json.body ?? {};\nconst text = (v) => String(v ?? '').trim();\nconst stelle = text(b.stelle);\nconst vorlage = text(b.vorlage);\nif (!stelle) return [{ json: { ok: false, fehler: 'Die Bezeichnung der Stelle fehlt.' } }];\nif (!vorlage) return [{ json: { ok: false, fehler: 'Bitte eine Vorlage wählen.' } }];\nreturn [{ json: { ok: true, stelle, vorlage } }];"
+        }
+      },
+      {
+        "id": "85e02f1d-5a05-4d1f-9c79-4605669c64f2",
+        "name": "Neue Stelle gültig?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          960
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.ok }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "32ea9331-5591-4279-ad7b-bc1ed98299e8",
+        "name": "Vorlage: Stelle lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          672,
+          896
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "8xM8IZCVDEqUj0tt"
+          },
+          "matchType": "allConditions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "assistantId",
+                "condition": "eq",
+                "keyValue": "={{ $('Neue Stelle prüfen').first().json.vorlage }}"
+              }
+            ]
+          },
+          "returnAll": true
+        },
+        "alwaysOutputData": true,
+        "executeOnce": true
+      },
+      {
+        "id": "28cdb66c-6a6e-41a5-85f6-af90ac6e6b62",
+        "name": "Vorlage: Kriterien lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          896,
+          896
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "wfqEsCqZ3WSd74DP"
+          },
+          "matchType": "allConditions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "assistantId",
+                "condition": "eq",
+                "keyValue": "={{ $('Neue Stelle prüfen').first().json.vorlage }}"
+              }
+            ]
+          },
+          "returnAll": true,
+          "orderBy": true,
+          "orderByColumn": "position",
+          "orderByDirection": "ASC"
+        },
+        "alwaysOutputData": true,
+        "executeOnce": true
+      },
+      {
+        "id": "3c29b5f9-5a12-40df-b694-f8f9295641a4",
+        "name": "Vorlage: Leitfaden lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          1120,
+          896
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "fZtKK4sQunxRZCnA"
+          },
+          "matchType": "allConditions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "assistantId",
+                "condition": "eq",
+                "keyValue": "={{ $('Neue Stelle prüfen').first().json.vorlage }}"
+              }
+            ]
+          },
+          "returnAll": true,
+          "orderBy": true,
+          "orderByColumn": "position",
+          "orderByDirection": "ASC"
+        },
+        "alwaysOutputData": true,
+        "executeOnce": true
+      },
+      {
+        "id": "14602658-da5b-464f-be50-0662b1c95d39",
+        "name": "Vorlage laden",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          1344,
+          896
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://api.vapi.ai/assistant/{{ $('Neue Stelle prüfen').first().json.vorlage }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "everlast-n8n-ui/1.0"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "rEWuAIoBRZRraSyN",
+            "name": "Header Auth account 2"
+          }
+        },
+        "onError": "continueErrorOutput",
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 3000,
+        "executeOnce": true
+      },
+      {
+        "id": "fb2baec2-6120-457a-9371-8b32181300af",
+        "name": "Assistant bauen",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1568,
+          896
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Neuer Assistant als Kopie der Vorlage: Technik und Gesprächsstil bleiben, alles Stellenbezogene wird neu gesetzt.\nconst n = $('Neue Stelle prüfen').first().json;\nconst { id, orgId, createdAt, updatedAt, isServerUrlSecretSet, latestVersion, ...a } = $input.first().json;\n// \"(m/w/d)\" und ähnliche Klammern würde die Stimme sonst mit vorlesen.\nconst kurz = n.stelle.replace(/\\s*\\([^)]*\\)/g, '').trim() || n.stelle;\nconst voll = 'Everlast Interview - ' + kurz;\nconst name = (voll.length <= 40 ? voll : kurz).slice(0, 40);\nconst jobId = kurz.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');\nconst keyterms = ['Everlast', 'Everlast Consulting'];\n\nconst prompt = (a.model?.messages ?? []).find((m) => m.role === 'system');\nif (!prompt) throw new Error('Die Vorlage hat keinen System-Prompt.');\nconst ersetzen = (text, start, ende, inhalt) => {\n  const re = new RegExp('(' + start + '\\\\n)([\\\\s\\\\S]*?)(\\\\n' + ende + '\\\\n)');\n  if (!re.test(text)) throw new Error('Abschnitt \"' + start + '\" fehlt im Prompt der Vorlage.');\n  return text.replace(re, (m, kopf, alt, fuss) => kopf + '\\n' + inhalt + '\\n' + fuss);\n};\n// Bis der Sync gelaufen ist, kennt der Agent weder Stelle noch Fragen (Startwert wie in vapi/system-prompt.md).\nlet inhalt = ersetzen(prompt.content, '# Stelle', '# Leitfaden', 'Noch nicht synchronisiert. Du kennst keine Fakten zur Stelle.');\ninhalt = ersetzen(inhalt, '# Leitfaden', '# Gesprächsregeln', 'Noch nicht synchronisiert. Sag der Person nach ihrer Antwort auf die Einwilligungsfrage, dass gerade ein technisches Problem besteht und sich das HR-Team bei ihr meldet. Beende dann das Gespräch.');\n\nconst transcriber = {\n  ...a.transcriber,\n  agentContext: 'Telefonisches Bewerbungsgespräch auf Deutsch für Everlast Consulting, Stelle ' + kurz + '. Bewerber nennen ihren Vor- und Nachnamen, oft nicht-deutsche Namen, manchmal buchstabiert.',\n  keytermsPrompt: keyterms,\n};\nif (transcriber.fallbackPlan?.transcribers) {\n  transcriber.fallbackPlan = {\n    ...transcriber.fallbackPlan,\n    transcribers: transcriber.fallbackPlan.transcribers.map((t) => (t.customVocabulary ? { ...t, customVocabulary: keyterms } : t)),\n  };\n}\n\nreturn [{ json: { assistant: {\n  ...a,\n  name,\n  firstMessage: 'Hallo und schön, dass du da bist! Ich bin der KI-Assistent von Everlast Consulting und führe heute das Gespräch mit dir für die Stelle ' + kurz + '. Kurz vorab: Das Gespräch wird aufgezeichnet und automatisch ausgewertet, die Entscheidung trifft aber immer unser HR-Team. Bist du damit einverstanden?',\n  voicemailMessage: 'Hallo, hier ist der KI-Assistent von Everlast Consulting. Wir wollten mit dir ein Gespräch für die Stelle ' + kurz + ' führen. Wir melden uns noch einmal bei dir. Bis bald!',\n  metadata: { ...(a.metadata ?? {}), jobId, jobTitle: n.stelle, configSource: 'UI, Kopie von ' + (a.name ?? n.vorlage) },\n  transcriber,\n  model: { ...a.model, messages: a.model.messages.map((m) => (m === prompt ? { ...m, content: inhalt } : m)) },\n} } }];"
+        }
+      },
+      {
+        "id": "91b572a7-5f48-4995-948e-adb21cfd24db",
+        "name": "Assistant anlegen",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          1792,
+          896
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.vapi.ai/assistant",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "everlast-n8n-ui/1.0"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.assistant) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "rEWuAIoBRZRraSyN",
+            "name": "Header Auth account 2"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "490a1361-884b-44de-ac1b-931af597b005",
+        "name": "Stelle-Zeile",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2016,
+          896
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Unternehmen und Schwellen kommen aus der Vorlage; Aufgaben und Anforderungen sind stellenspezifisch und bleiben leer.\nconst v = $('Vorlage: Stelle lesen').first()?.json ?? {};\nreturn [{ json: {\n  assistantId: $input.first().json.id,\n  stelle: $('Neue Stelle prüfen').first().json.stelle,\n  unternehmen: v.unternehmen ?? '',\n  aufgaben: '',\n  anforderungen: '',\n  einladenAb: v.einladenAb ?? 70,\n  absageUnter: v.absageUnter ?? 45,\n} }];"
+        }
+      },
+      {
+        "id": "b96e4ccc-c52b-4842-8b97-916b5738bb50",
+        "name": "Stelle anlegen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          2240,
+          896
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "insert",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "8xM8IZCVDEqUj0tt"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": null
+          }
+        }
+      },
+      {
+        "id": "48a56a1b-c4c9-4e8b-9a6a-c1c3e215a0c2",
+        "name": "Kriterien kopieren",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2464,
+          896
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const id = $('Assistant anlegen').first().json.id;\nreturn $('Vorlage: Kriterien lesen').all().map((i) => i.json).filter((k) => k.kriterium).map(({ id: _, createdAt, updatedAt, ...k }) => ({ json: { ...k, assistantId: id } }));"
+        }
+      },
+      {
+        "id": "89283262-c9aa-41ff-92ae-7c9cd90995aa",
+        "name": "Kriterien übernehmen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          2688,
+          896
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "insert",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "wfqEsCqZ3WSd74DP"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": null
+          }
+        }
+      },
+      {
+        "id": "0ef6b429-a0b3-4326-a53f-eca884d4d6c9",
+        "name": "Leitfaden kopieren",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2912,
+          896
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const id = $('Assistant anlegen').first().json.id;\nreturn $('Vorlage: Leitfaden lesen').all().map((i) => i.json).filter((l) => l.frage).map(({ id: _, createdAt, updatedAt, ...l }) => ({ json: { ...l, assistantId: id } }));"
+        }
+      },
+      {
+        "id": "10f239d5-9cb5-422a-9464-5b69cf237961",
+        "name": "Leitfaden übernehmen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          3136,
+          896
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "insert",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "fZtKK4sQunxRZCnA"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": null
+          }
+        }
+      },
+      {
+        "id": "b1501210-2426-4b1f-88ea-1c8e503aa0a6",
+        "name": "Neuen Prompt synchronisieren",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.4,
+        "position": [
+          3360,
+          896
+        ],
+        "parameters": {
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "RGKss8vJmfN3nvF1"
+          },
+          "mode": "once",
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput",
+        "alwaysOutputData": true,
+        "executeOnce": true
+      },
+      {
+        "id": "b98e41a1-5245-4393-ad14-0f7bd44cdc21",
+        "name": "Angelegt-Antwort",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3584,
+          896
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "const a = $('Assistant anlegen').first().json;\nconst fehler = $input.all().map((i) => i.json.error).find(Boolean);\nreturn [{ json: { ok: true, assistantId: a.id, name: a.name, sync: fehler ? 'fehler' : 'ok', syncFehler: fehler ? String(fehler.message ?? fehler) : null } }];"
+        }
+      },
+      {
+        "id": "3d6449d6-332d-4a99-a006-ecbc5777af2d",
+        "name": "Angelegt",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          3808,
+          896
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {}
+        }
+      },
+      {
+        "id": "40a5682e-dbc2-405e-a46f-69a92f4e9499",
+        "name": "Vapi-Fehler",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          1792,
+          1120
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ ok: false, fehler: $json.fehler ?? ('Vapi-Fehler: ' + (typeof $json.error === 'string' ? $json.error : ([$json.error?.message, $json.error?.description].filter(Boolean).join(' – ') || 'unbekannt'))) }) }}",
+          "options": {
+            "responseCode": 502
+          }
+        }
+      },
+      {
+        "id": "3198795e-692f-4947-8197-53373a1e1406",
+        "name": "DELETE Stelle",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          1344
+        ],
+        "parameters": {
+          "httpMethod": "DELETE",
+          "path": "ui/stelle",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "77f247b4-b93e-4ab4-9bf7-e460292506ca"
+      },
+      {
+        "id": "02dbb47a-61c3-4aef-b454-6554da7ea752",
+        "name": "Telefonnummern laden",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          224,
+          1344
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "https://api.vapi.ai/phone-number",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "everlast-n8n-ui/1.0"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "rEWuAIoBRZRraSyN",
+            "name": "Header Auth account 2"
+          }
+        },
+        "onError": "continueErrorOutput",
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 3000,
+        "alwaysOutputData": true
+      },
+      {
+        "id": "e6f9ebac-2126-4077-b4a0-e9c15e924039",
+        "name": "Löschen prüfen",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          1344
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Löschen nur mit Assistant-ID und nur, wenn keine Telefonnummer auf den Assistant zeigt.\nconst id = String($('DELETE Stelle').first().json.query?.assistantId ?? '').trim();\nif (!id) return [{ json: { ok: false, fehler: 'Assistant-ID fehlt.' } }];\nconst nummern = $input.all().map((i) => i.json).filter((p) => p.assistantId === id);\nif (nummern.length) {\n  return [{ json: { ok: false, fehler: 'Die Telefonnummer ' + nummern.map((p) => p.number ?? p.name ?? p.id).join(', ') + ' ist mit diesem Assistant verbunden. Stell sie in Vapi zuerst auf einen anderen Assistant um.' } }];\n}\nreturn [{ json: { ok: true, assistantId: id } }];"
+        }
+      },
+      {
+        "id": "4c178275-3f68-4cd9-89c0-bd2955de5acd",
+        "name": "Löschen erlaubt?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          1344
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.ok }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "2807ff8c-a860-477c-b3c7-f8a4345f044e",
+        "name": "Assistant löschen",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          1280
+        ],
+        "parameters": {
+          "method": "DELETE",
+          "url": "=https://api.vapi.ai/assistant/{{ $json.assistantId }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "everlast-n8n-ui/1.0"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "rEWuAIoBRZRraSyN",
+            "name": "Header Auth account 2"
+          }
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 3000
+      },
+      {
+        "id": "213291d5-9f84-46e8-97a8-31ddb3b2d92e",
+        "name": "Löschen auswerten",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          1280
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// 404: Den Assistant gibt es in Vapi schon nicht mehr; die Stelle wird trotzdem entfernt.\nconst r = $input.first().json;\nconst code = Number(r.statusCode);\nconst id = $('Löschen prüfen').first().json.assistantId;\nif ((code >= 200 && code < 300) || code === 404) return [{ json: { ok: true, assistantId: id } }];\nreturn [{ json: { ok: false, fehler: 'Vapi hat das Löschen abgelehnt (' + code + '): ' + (r.body?.message ?? JSON.stringify(r.body)) } }];"
+        }
+      },
+      {
+        "id": "a80a0765-2885-4a8a-8f07-e9a63e49c176",
+        "name": "In Vapi gelöscht?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1344,
+          1280
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.ok }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "27121795-04a6-41ac-83d6-5949b9adc4c0",
+        "name": "Stelle löschen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          1568,
+          1216
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "deleteRows",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "8xM8IZCVDEqUj0tt"
+          },
+          "matchType": "allConditions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "assistantId",
+                "condition": "eq",
+                "keyValue": "={{ $('Löschen prüfen').first().json.assistantId }}"
+              }
+            ]
+          }
+        },
+        "alwaysOutputData": true,
+        "executeOnce": true
+      },
+      {
+        "id": "da459f98-c9a4-419f-9dc8-a4213be2ca9f",
+        "name": "Kriterien der Stelle löschen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          1792,
+          1216
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "deleteRows",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "wfqEsCqZ3WSd74DP"
+          },
+          "matchType": "allConditions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "assistantId",
+                "condition": "eq",
+                "keyValue": "={{ $('Löschen prüfen').first().json.assistantId }}"
+              }
+            ]
+          }
+        },
+        "alwaysOutputData": true,
+        "executeOnce": true
+      },
+      {
+        "id": "b5c2f81b-ff73-4575-bdcb-e71d5d00ae62",
+        "name": "Leitfaden der Stelle löschen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          2016,
+          1216
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "deleteRows",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "fZtKK4sQunxRZCnA"
+          },
+          "matchType": "allConditions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "assistantId",
+                "condition": "eq",
+                "keyValue": "={{ $('Löschen prüfen').first().json.assistantId }}"
+              }
+            ]
+          }
+        },
+        "alwaysOutputData": true,
+        "executeOnce": true
+      },
+      {
+        "id": "44ae2d57-fe87-42db-84c0-ebdaff199649",
+        "name": "Gelöscht",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          2240,
+          1216
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ ok: true, assistantId: $('Löschen prüfen').first().json.assistantId }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "66dd180c-3775-4b29-a2c0-05b0f0356f19",
+        "name": "Neue Stelle ungültig",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          672,
+          1088
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {
+            "responseCode": 400
+          }
+        }
+      },
+      {
+        "id": "53764e47-f1fa-4cd4-aa3c-5a2e1188f6f5",
+        "name": "Löschen abgelehnt",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          896,
+          1472
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {
+            "responseCode": 400
+          }
+        }
+      },
+      {
+        "id": "28465391-80a7-4f6a-a423-c0f6826fe186",
+        "name": "Vapi-Fehler beim Löschen",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          1568,
+          1472
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ ok: false, fehler: $json.fehler ?? ('Vapi-Fehler: ' + (typeof $json.error === 'string' ? $json.error : ([$json.error?.message, $json.error?.description].filter(Boolean).join(' – ') || 'unbekannt'))) }) }}",
+          "options": {
+            "responseCode": 502
+          }
+        }
       }
     ],
     "connections": {
@@ -797,6 +1574,345 @@
             }
           ]
         ]
+      },
+      "POST Stelle": {
+        "main": [
+          [
+            {
+              "node": "Neue Stelle prüfen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Neue Stelle prüfen": {
+        "main": [
+          [
+            {
+              "node": "Neue Stelle gültig?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Neue Stelle gültig?": {
+        "main": [
+          [
+            {
+              "node": "Vorlage: Stelle lesen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Neue Stelle ungültig",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Vorlage: Stelle lesen": {
+        "main": [
+          [
+            {
+              "node": "Vorlage: Kriterien lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Vorlage: Kriterien lesen": {
+        "main": [
+          [
+            {
+              "node": "Vorlage: Leitfaden lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Vorlage: Leitfaden lesen": {
+        "main": [
+          [
+            {
+              "node": "Vorlage laden",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Vorlage laden": {
+        "main": [
+          [
+            {
+              "node": "Assistant bauen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Vapi-Fehler",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Assistant bauen": {
+        "main": [
+          [
+            {
+              "node": "Assistant anlegen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Assistant anlegen": {
+        "main": [
+          [
+            {
+              "node": "Stelle-Zeile",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Vapi-Fehler",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Stelle-Zeile": {
+        "main": [
+          [
+            {
+              "node": "Stelle anlegen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Stelle anlegen": {
+        "main": [
+          [
+            {
+              "node": "Kriterien kopieren",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Kriterien kopieren": {
+        "main": [
+          [
+            {
+              "node": "Kriterien übernehmen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Kriterien übernehmen": {
+        "main": [
+          [
+            {
+              "node": "Leitfaden kopieren",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leitfaden kopieren": {
+        "main": [
+          [
+            {
+              "node": "Leitfaden übernehmen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leitfaden übernehmen": {
+        "main": [
+          [
+            {
+              "node": "Neuen Prompt synchronisieren",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Neuen Prompt synchronisieren": {
+        "main": [
+          [
+            {
+              "node": "Angelegt-Antwort",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Angelegt-Antwort": {
+        "main": [
+          [
+            {
+              "node": "Angelegt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "DELETE Stelle": {
+        "main": [
+          [
+            {
+              "node": "Telefonnummern laden",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Telefonnummern laden": {
+        "main": [
+          [
+            {
+              "node": "Löschen prüfen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Vapi-Fehler beim Löschen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Löschen prüfen": {
+        "main": [
+          [
+            {
+              "node": "Löschen erlaubt?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Löschen erlaubt?": {
+        "main": [
+          [
+            {
+              "node": "Assistant löschen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Löschen abgelehnt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Assistant löschen": {
+        "main": [
+          [
+            {
+              "node": "Löschen auswerten",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Löschen auswerten": {
+        "main": [
+          [
+            {
+              "node": "In Vapi gelöscht?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "In Vapi gelöscht?": {
+        "main": [
+          [
+            {
+              "node": "Stelle löschen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Vapi-Fehler beim Löschen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Stelle löschen": {
+        "main": [
+          [
+            {
+              "node": "Kriterien der Stelle löschen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Kriterien der Stelle löschen": {
+        "main": [
+          [
+            {
+              "node": "Leitfaden der Stelle löschen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leitfaden der Stelle löschen": {
+        "main": [
+          [
+            {
+              "node": "Gelöscht",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "settings": {
@@ -836,7 +1952,7 @@
         "description": "GET /webhook/ui/config: Stellen mit Kriterien und Leitfaden."
       },
       {
-        "id": "83b88574-95af-4058-9977-e2ab16105618",
+        "id": "50a8349c-9650-44e1-976c-4bebdf3d21bb",
         "name": "Konfiguration speichern",
         "nodeIds": [
           "d392236c-a0e0-4308-8604-26a232110297",
@@ -854,13 +1970,58 @@
           "0bb5f0e8-2ead-493a-85a6-dd21d131c920"
         ],
         "description": "POST /webhook/ui/config: prüfen, Kriterien und Leitfaden der Stelle ersetzen, Vapi-Prompt synchronisieren."
+      },
+      {
+        "id": "86364eed-8439-4ca5-b18a-ede4a8d4183e",
+        "name": "Stelle anlegen",
+        "nodeIds": [
+          "7bbf2561-5255-4fca-8778-114d955649b5",
+          "85e02f1d-5a05-4d1f-9c79-4605669c64f2",
+          "66dd180c-3775-4b29-a2c0-05b0f0356f19",
+          "32ea9331-5591-4279-ad7b-bc1ed98299e8",
+          "28cdb66c-6a6e-41a5-85f6-af90ac6e6b62",
+          "3c29b5f9-5a12-40df-b694-f8f9295641a4",
+          "14602658-da5b-464f-be50-0662b1c95d39",
+          "fb2baec2-6120-457a-9371-8b32181300af",
+          "91b572a7-5f48-4995-948e-adb21cfd24db",
+          "490a1361-884b-44de-ac1b-931af597b005",
+          "b96e4ccc-c52b-4842-8b97-916b5738bb50",
+          "48a56a1b-c4c9-4e8b-9a6a-c1c3e215a0c2",
+          "89283262-c9aa-41ff-92ae-7c9cd90995aa",
+          "0ef6b429-a0b3-4326-a53f-eca884d4d6c9",
+          "10f239d5-9cb5-422a-9464-5b69cf237961",
+          "b1501210-2426-4b1f-88ea-1c8e503aa0a6",
+          "b98e41a1-5245-4393-ad14-0f7bd44cdc21",
+          "3d6449d6-332d-4a99-a006-ecbc5777af2d",
+          "40a5682e-dbc2-405e-a46f-69a92f4e9499"
+        ],
+        "description": "POST /webhook/ui/stelle: Assistant der Vorlage in Vapi kopieren, Kriterien und Leitfaden übernehmen, Prompt synchronisieren."
+      },
+      {
+        "id": "f9967ded-8f81-4f0e-ab30-aee3f7378b16",
+        "name": "Stelle löschen",
+        "nodeIds": [
+          "02dbb47a-61c3-4aef-b454-6554da7ea752",
+          "e6f9ebac-2126-4077-b4a0-e9c15e924039",
+          "4c178275-3f68-4cd9-89c0-bd2955de5acd",
+          "53764e47-f1fa-4cd4-aa3c-5a2e1188f6f5",
+          "2807ff8c-a860-477c-b3c7-f8a4345f044e",
+          "213291d5-9f84-46e8-97a8-31ddb3b2d92e",
+          "a80a0765-2885-4a8a-8f07-e9a63e49c176",
+          "27121795-04a6-41ac-83d6-5949b9adc4c0",
+          "da459f98-c9a4-419f-9dc8-a4213be2ca9f",
+          "b5c2f81b-ff73-4575-bdcb-e71d5d00ae62",
+          "44ae2d57-fe87-42db-84c0-ebdaff199649",
+          "28465391-80a7-4f6a-a423-c0f6826fe186"
+        ],
+        "description": "DELETE /webhook/ui/stelle?assistantId=: Assistant in Vapi löschen (nicht bei Telefonnummer), dann Zeilen der Stelle. Protokolle bleiben."
       }
     ],
     "pinData": null,
-    "versionId": "1e00ba8b-cdeb-4bff-a184-1bce9ec68998",
-    "activeVersionId": "1e00ba8b-cdeb-4bff-a184-1bce9ec68998",
-    "versionCounter": 3,
-    "triggerCount": 3,
+    "versionId": "610a1c16-61b7-4c72-bcc5-f437d123292c",
+    "activeVersionId": "610a1c16-61b7-4c72-bcc5-f437d123292c",
+    "versionCounter": 5,
+    "triggerCount": 5,
     "sourceWorkflowId": null,
     "tags": [],
     "shared": [
@@ -884,8 +2045,8 @@
       }
     ],
     "versionMetadata": {
-      "name": "Antwort auch ohne Sync-Änderung",
-      "description": "Updated nodes: Vapi-Prompt synchronisieren"
+      "name": "Eigene Antwort-Knoten je Zweig, Gruppen",
+      "description": "Added nodes: Neue Stelle ungültig, Löschen abgelehnt, Vapi-Fehler beim Löschen\nConnections: 4 added, 4 removed"
     }
   }
 ]

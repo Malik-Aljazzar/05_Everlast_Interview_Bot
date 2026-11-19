@@ -38,3 +38,19 @@ export const speichereStelle = (stelle: Stelle) =>
       leitfaden: stelle.leitfaden,
     }),
   });
+
+export interface AnlegenAntwort {
+  ok: boolean;
+  assistantId: string;
+  name: string;
+  sync: 'ok' | 'fehler';
+  syncFehler: string | null;
+}
+
+// Legt in Vapi einen neuen Assistant als Kopie der Vorlage an und übernimmt deren Kriterien und Leitfaden.
+export const legeStelleAn = (stelle: string, vorlage: string) =>
+  anfrage<AnlegenAntwort>('/stelle', { method: 'POST', body: JSON.stringify({ stelle, vorlage }) });
+
+// Löscht den Vapi-Assistant und die Zeilen der Stelle; Protokolle bleiben.
+export const loescheStelle = (assistantId: string) =>
+  anfrage<{ ok: boolean }>('/stelle?assistantId=' + encodeURIComponent(assistantId), { method: 'DELETE' });
