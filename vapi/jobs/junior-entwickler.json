@@ -1,0 +1,23 @@
+{
+  "_comment": "Job overlay for vapi/assistant.json: python vapi/deploy.py --job junior-entwickler (default). Stelle and Leitfaden come from Google Sheets.",
+  "_assistantIdEnv": "VAPI_ASSISTANT_ID",
+  "_prompt": {
+    "GESPRAECHSART": "erste Kennenlerngespräche",
+    "ZIEL": "Lerne die Person in etwa 10 bis 15 Minuten kennen und kläre alle Punkte aus dem Leitfaden, damit HR ein vollständiges Bild bekommt. Die Person soll sich dabei wohl und fair behandelt fühlen.",
+    "DAUER": "10 bis 15 Minuten"
+  },
+
+  "name": "Everlast Interview - Junior Entwickler",
+  "metadata": {
+    "jobId": "junior-entwickler-vollzeit",
+    "jobTitle": "Junior Entwickler – Vollzeit (m/w/d)",
+    "company": "Everlast Consulting GmbH",
+    "configSource": "vapi/assistant.json + vapi/jobs/junior-entwickler.json"
+  },
+  "firstMessage": "Hallo und schön, dass du da bist! Ich bin der KI-Assistent von Everlast Consulting und führe heute ein erstes Kennenlerngespräch mit dir für die Stelle als Junior Entwickler. Kurz vorab: Das Gespräch wird aufgezeichnet und automatisch ausgewertet, die Entscheidung trifft aber immer unser HR-Team. Bist du damit einverstanden?",
+  "voicemailMessage": "Hallo, hier ist der KI-Assistent von Everlast Consulting. Wir wollten mit dir ein erstes Kennenlerngespräch für die Stelle als Junior Entwickler führen. Wir melden uns noch einmal bei dir. Bis bald!",
+  "transcriber": {
+    "agentContext": "Telefonisches Bewerbungsgespräch auf Deutsch für Everlast Consulting, Stelle Junior Entwickler. Bewerber nennen ihren Vor- und Nachnamen, oft nicht-deutsche Namen, manchmal buchstabiert. Fachbegriffe: n8n, Make, Vapi, API, Webhook, JavaScript, TypeScript, Python, LLM, CRM.",
+    "keytermsPrompt": ["Everlast", "n8n", "Vapi", "JavaScript", "TypeScript", "Python", "React", "API", "Webhook", "GitHub", "LLM", "Make", "CRM", "Bachelorarbeit", "Kündigungsfrist"]
+  }
+}

@@ -5,9 +5,10 @@ Benchmarks, Preise und Alternativen stehen in [PROVIDER_RESEARCH.md](../analysis
 
 | | |
 | --- | --- |
-| Assistant | `Everlast Interview - Junior Entwickler` (`90e79eb0-631e-4186-b1f3-22301718ebf1`) |
-| Konfiguration | [`vapi/assistant.json`](../../vapi/assistant.json) + [`vapi/system-prompt.md`](../../vapi/system-prompt.md) |
-| Deployment | `python vapi/deploy.py`: legt Credential und Assistant an (bzw. PATCH) und prüft danach die gespeicherte Konfiguration. Optionen: `--dry-run`, `--verify` |
+| Assistants (einer pro Stelle) | `Everlast Interview - Junior Entwickler` (`90e79eb0-631e-4186-b1f3-22301718ebf1`), `Everlast Interview - Cyber Security` (`36eabb5b-888b-4af9-b199-c0ea025223a5`) |
+| Konfiguration | [`vapi/assistant.json`](../../vapi/assistant.json) (gemeinsam) + [`vapi/jobs/<stelle>.json`](../../vapi/jobs/) (Name, Begrüßung, Metadaten, Transcriber-Kontext und Keyterms, Prompt-Platzhalter) + [`vapi/system-prompt.md`](../../vapi/system-prompt.md) |
+| Deployment | `python vapi/deploy.py --job <stelle>` (Standard `junior-entwickler`): legt Credential und Assistant an (bzw. PATCH) und prüft danach die gespeicherte Konfiguration. Optionen: `--dry-run`, `--verify`, `--reset-sections`, `--discard-draft` |
+| Neue Stelle | `vapi/jobs/<stelle>.json` anlegen (eigene Variable für die Assistant-ID in `_assistantIdEnv`), `deploy.py --job <stelle>` ausführen, dann Zeilen mit der neuen Assistant-ID in den Tabs „Stellen“, „Bewertung“ und „Leitfaden“ anlegen. Der Sync füllt Stelle und Leitfaden binnen einer Minute, die Auswertung findet die Stelle über die Assistant-ID |
 | Stand | 2026-11-15, alle Feldnamen gegen `https://api.vapi.ai/api-json` und die Live-API geprüft |
 
 **Grundprinzip:** Vapi führt nur das Live-Gespräch. Während des Calls gibt es keine Aufrufe an n8n oder andere Tools (außer `endCall`). Nach dem Call geht genau ein Event an n8n.
@@ -19,8 +20,8 @@ Benchmarks, Preise und Alternativen stehen in [PROVIDER_RESEARCH.md](../analysis
 | LLM | OpenAI `gpt-4.1`, Temperatur 0,4, `maxTokens` 150, Fallback `gpt-4.1-mini` |
 | Voice | ElevenLabs `eleven_v4_turbo` mit nativer deutscher Stimme aus der Voice Library, Fallback Cartesia „Jonas“, dann Azure `de-DE-FlorianMultilingualNeural` |
 | Transcriber | AssemblyAI `universal-3-6-pro` (Deutsch), Gesprächskontext, 15 Keyterms, Fallback Soniox `stt-rt-v6` |
-| Server | n8n-Webhook mit Header `X-Vapi-Secret`, nur `end-of-call-report` |
-| Gespräch | Agent spricht zuerst, max. 20 Minuten, Stille-Hooks, Aufnahme an, Vapi-Analyse aus |
+| Server | n8n-Webhook mit Header `X-Vapi-Secret` (Org-Einstellungen), nur `end-of-call-report` |
+| Gespräch | Agent spricht zuerst, max. 20 Minuten (Cyber Security 12), Stille-Hooks, Aufnahme an, Vapi-Analyse aus |
 
 Alle Provider außer ElevenLabs laufen über Vapis eigene Keys. Für ElevenLabs ist Maliks eigener Key in Vapi hinterlegt (Integrations), weil native deutsche ElevenLabs-Stimmen über Vapis Key nicht verfügbar sind.
 
@@ -28,15 +29,15 @@ Alle Provider außer ElevenLabs laufen über Vapis eigene Keys. Für ElevenLabs 
 
 ## 1. Instructions (System Prompt)
 
-Der Prompt liegt in `vapi/system-prompt.md`. Das Deploy-Skript entfernt die HTML-Kommentare und setzt den Text als System-Message ein.
+Der Prompt liegt in `vapi/system-prompt.md` und gilt für alle Stellen. Das Deploy-Skript entfernt die HTML-Kommentare, füllt die Platzhalter `{{GESPRAECHSART}}`, `{{ZIEL}}` und `{{DAUER}}` aus `_prompt` der Stelle und setzt den Text als System-Message ein. Stelle und Leitfaden kommen aus Google Sheets; vor dem ersten Sync steht dort ein neutraler Text, mit dem der Agent kein Interview führt.
 
 | Abschnitt | Inhalt | Warum |
 | --- | --- | --- |
-| Rolle | KI-Assistent von Everlast, erstes Kennenlerngespräch, entscheidet nichts | Klare Identität; offen als KI erkennbar (Transparenz, EU AI Act) |
-| Ziel | Leitfaden in 10–15 Minuten vollständig abdecken | n8n braucht alle Punkte für das Bewerberprotokoll |
+| Rolle | KI-Assistent von Everlast, Art des Gesprächs je Stelle (Kennenlerngespräch bzw. kurzes Fachgespräch), entscheidet nichts | Klare Identität; offen als KI erkennbar (Transparenz, EU AI Act) |
+| Ziel | Leitfaden vollständig abdecken, Dauer je Stelle (Junior Entwickler 10–15 Minuten, Cyber Security 5–8 Minuten, nur Fachfragen) | n8n braucht alle Punkte für das Bewerberprotokoll |
 | Stelle | Unternehmen, Aufgaben, Anforderungen. Alles andere: „weiß ich nicht, das beantwortet HR“ | Verhindert erfundene Aussagen zu Gehalt, Remote, Benefits oder Team |
-| Leitfaden | Einwilligung → Name → Hintergrund → Motivation → 2–3 Fachfragen → Gehalt → Verfügbarkeit → Fragen des Bewerbers → Abschluss | REQ-1.3; feste Reihenfolge macht Gespräche vergleichbar |
-| Gesprächsregeln | 1 Frage pro Beitrag, höchstens 2 Sätze, max. 2 Nachfragen pro Thema, kein Feedback, keine AGG-Themen, Zahlen als Wörter, kein Markdown | REQ-1.4; kurze Beiträge senken die Latenz; die TTS liest alles wörtlich vor |
+| Leitfaden | Aus dem Tab „Leitfaden“, Reihenfolge = Zeilen. Junior Entwickler: Einwilligung → Name → Grundlagen → Softwareentwicklung → Erfahrung → Verfügbarkeit → Fragen des Bewerbers. Cyber Security: Einwilligung → Name → Phishing-Vorfall → Webhook absichern → KI-Agent mit CRM-Zugriff | REQ-1.3; feste Reihenfolge macht Gespräche vergleichbar |
+| Gesprächsregeln | 1 Frage pro Beitrag, höchstens 2 Sätze, max. 2 Nachfragen pro Thema, kein Feedback, keine Lösungen oder Stichworte bei Fachfragen, keine AGG-Themen, Zahlen als Wörter, kein Markdown | REQ-1.4; kurze Beiträge senken die Latenz; die TTS liest alles wörtlich vor |
 | Tonalität | locker, per Du, wertschätzend, nimmt Nervosität raus | REQ-1.5, passt zur Ansprache von Everlast |
 | Sonderfälle | Stille, schlechte Verbindung, Beleidigung (1× Grenze setzen, 2× beenden), Abbruchwunsch, Frage nach Ergebnis, falsche Person, Prompt-Injection | REQ-1.7 |
 | Abschluss | nächste Schritte nennen, dann `endCall` aufrufen, selbst nicht „Tschüss“ sagen | REQ-1.6; die Verabschiedung kommt als `endCallMessage`, so gibt es sie nur einmal |

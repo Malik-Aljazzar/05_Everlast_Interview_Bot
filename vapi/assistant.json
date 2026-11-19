@@ -1,19 +1,10 @@
 {
-  "_comment": "Vapi assistant config (POST/PATCH /assistant). No secrets. Keys starting with '_' are stripped by deploy.py. __SYSTEM_PROMPT__ is replaced with vapi/system-prompt.md. Explained in docs/design/VAPI_CONFIG.md.",
-  "name": "Everlast Interview - Junior Entwickler",
-  "metadata": {
-    "jobId": "junior-entwickler-vollzeit",
-    "jobTitle": "Junior Entwickler – Vollzeit (m/w/d)",
-    "company": "Everlast Consulting GmbH",
-    "configSource": "vapi/assistant.json"
-  },
+  "_comment": "Shared Vapi assistant config for all jobs (POST/PATCH /assistant). No secrets. deploy.py merges vapi/jobs/<job>.json on top (name, metadata, messages, transcriber context and keyterms). Keys starting with '_' are stripped. __SYSTEM_PROMPT__ is replaced with vapi/system-prompt.md, __KEYTERMS__ with transcriber.keytermsPrompt. Explained in docs/design/VAPI_CONFIG.md.",
 
   "firstMessageMode": "assistant-speaks-first",
   "firstMessageInterruptionsEnabled": false,
-  "firstMessage": "Hallo und schön, dass du da bist! Ich bin der KI-Assistent von Everlast Consulting und führe heute ein erstes Kennenlerngespräch mit dir für die Stelle als Junior Entwickler. Kurz vorab: Das Gespräch wird aufgezeichnet und automatisch ausgewertet, die Entscheidung trifft aber immer unser HR-Team. Bist du damit einverstanden?",
   "endCallMessage": "Danke dir für deine Zeit und alles Gute. Tschüss!",
   "endCallPhrases": ["tschüss", "auf wiederhören"],
-  "voicemailMessage": "Hallo, hier ist der KI-Assistent von Everlast Consulting. Wir wollten mit dir ein erstes Kennenlerngespräch für die Stelle als Junior Entwickler führen. Wir melden uns noch einmal bei dir. Bis bald!",
   "voicemailDetection": {
     "provider": "vapi",
     "type": "audio"
@@ -119,8 +110,6 @@
     "speechModel": "universal-3-6-pro",
     "languageCodes": ["de"],
     "mode": "balanced",
-    "keytermsPrompt": ["Everlast", "n8n", "Vapi", "JavaScript", "TypeScript", "Python", "React", "API", "Webhook", "GitHub", "LLM", "Make", "CRM", "Bachelorarbeit", "Kündigungsfrist"],
-    "agentContext": "Telefonisches Bewerbungsgespräch auf Deutsch für Everlast Consulting, Stelle Junior Entwickler. Bewerber nennen ihren Vor- und Nachnamen, oft nicht-deutsche Namen, manchmal buchstabiert. Fachbegriffe: n8n, Make, Vapi, API, Webhook, JavaScript, TypeScript, Python, LLM, CRM.",
     "agentContextAutoUpdateEnabled": true,
     "endOfTurnConfidenceThreshold": 0.7,
     "minEndOfTurnSilenceWhenConfident": 500,
@@ -133,7 +122,7 @@
           "model": "stt-rt-v6",
           "language": "de",
           "agentTextInputEnabled": true,
-          "customVocabulary": ["Everlast", "n8n", "Vapi", "JavaScript", "TypeScript", "Python", "React", "API", "Webhook", "GitHub", "LLM", "Make", "CRM", "Bachelorarbeit", "Kündigungsfrist"]
+          "customVocabulary": "__KEYTERMS__"
         }
       ]
     }

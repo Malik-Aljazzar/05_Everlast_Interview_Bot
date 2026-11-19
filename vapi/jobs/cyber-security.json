@@ -1,0 +1,24 @@
+{
+  "_comment": "Job overlay for vapi/assistant.json: python vapi/deploy.py --job cyber-security. Short technical interview (three questions). Stelle and Leitfaden come from Google Sheets.",
+  "_assistantIdEnv": "VAPI_ASSISTANT_ID_CYBER_SECURITY",
+  "_prompt": {
+    "GESPRAECHSART": "kurze fachliche Vorgespräche",
+    "ZIEL": "Prüfe in etwa fünf bis acht Minuten das Fachwissen der Person mit den Fragen aus dem Leitfaden, damit HR die fachliche Eignung einschätzen kann. Es geht nur um Fachliches, kein Smalltalk und keine Fragen zu Lebenslauf, Gehalt oder Verfügbarkeit. Die Person soll sich dabei wohl und fair behandelt fühlen.",
+    "DAUER": "fünf bis acht Minuten"
+  },
+
+  "name": "Everlast Interview - Cyber Security",
+  "metadata": {
+    "jobId": "cyber-security-analyst-vollzeit",
+    "jobTitle": "Cyber Security Analyst – Vollzeit (m/w/d)",
+    "company": "Everlast Consulting GmbH",
+    "configSource": "vapi/assistant.json + vapi/jobs/cyber-security.json"
+  },
+  "firstMessage": "Hallo und schön, dass du da bist! Ich bin der KI-Assistent von Everlast Consulting und stelle dir heute drei kurze Fachfragen für die Stelle im Bereich Cyber Security. Kurz vorab: Das Gespräch wird aufgezeichnet und automatisch ausgewertet, die Entscheidung trifft aber immer unser HR-Team. Bist du damit einverstanden?",
+  "voicemailMessage": "Hallo, hier ist der KI-Assistent von Everlast Consulting. Wir wollten mit dir ein kurzes Fachgespräch für die Stelle im Bereich Cyber Security führen. Wir melden uns noch einmal bei dir. Bis bald!",
+  "maxDurationSeconds": 720,
+  "transcriber": {
+    "agentContext": "Telefonisches Bewerbungsgespräch auf Deutsch für Everlast Consulting, Stelle Cyber Security Analyst. Bewerber nennen ihren Vor- und Nachnamen, oft nicht-deutsche Namen, manchmal buchstabiert. Fachbegriffe: Phishing, Incident Response, SIEM, SOC, EDR, MFA, Webhook, API, HMAC, TLS, OWASP, Prompt Injection, Least Privilege, LLM, CRM.",
+    "keytermsPrompt": ["Everlast", "Phishing", "Incident Response", "SIEM", "SOC", "EDR", "MFA", "Webhook", "API", "HMAC", "TLS", "OWASP", "Prompt Injection", "Least Privilege", "Rate Limiting", "Zero Trust", "LLM", "CRM", "DSGVO"]
+  }
+}

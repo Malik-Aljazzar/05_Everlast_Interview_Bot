@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Deploy the Everlast interview assistant to Vapi (stdlib only).
+"""Deploy the Everlast interview assistants to Vapi (stdlib only), one assistant per job.
 
 Steps:
   1. Read secrets from <repo>/.env (VAPI_API_KEY, WEBHOOK_SECRET; optional
-     VAPI_CREDENTIAL_ID, VAPI_ASSISTANT_ID).
+     VAPI_CREDENTIAL_ID and the job's assistant ID, e.g. VAPI_ASSISTANT_ID).
   2. Create the server credential (custom-credential, bearer type, header
      X-Vapi-Secret without "Bearer " prefix) unless VAPI_CREDENTIAL_ID is set.
-  3. Build the assistant payload from vapi/assistant.json + vapi/system-prompt.md.
-  4. POST /assistant, or PATCH /assistant/{id} if VAPI_ASSISTANT_ID is set.
+  3. Build the assistant payload from vapi/assistant.json (shared), the job
+     overlay vapi/jobs/<job>.json and vapi/system-prompt.md.
+  4. POST /assistant, or PATCH /assistant/{id} if the job's assistant ID is set.
   5. Append newly created IDs (IDs only, never secrets) to .env.
   6. GET the assistant back and verify the stored config matches the payload.
 
@@ -16,8 +17,9 @@ and synced into Vapi by the n8n workflow "Vapi – Leitfaden synchronisieren". W
 updating an existing assistant, this script keeps the live versions of those
 sections; the text in system-prompt.md is only the initial value.
 
-Usage:
+Usage (every command takes --job <name>, default junior-entwickler):
   python vapi/deploy.py                    # deploy + verify
+  python vapi/deploy.py --job cyber-security
   python vapi/deploy.py --dry-run          # build payload and print summary, no API calls
   python vapi/deploy.py --verify           # only GET + verify the existing assistant
   python vapi/deploy.py --reset-sections   # overwrite the synced sections with system-prompt.md
@@ -46,8 +48,11 @@ REPO_ROOT = VAPI_DIR.parent
 ENV_PATH = REPO_ROOT / ".env"
 ASSISTANT_PATH = VAPI_DIR / "assistant.json"
 PROMPT_PATH = VAPI_DIR / "system-prompt.md"
+JOBS_DIR = VAPI_DIR / "jobs"
+DEFAULT_JOB = "junior-entwickler"
 
 PROMPT_PLACEHOLDER = "__SYSTEM_PROMPT__"
+KEYTERMS_PLACEHOLDER = "__KEYTERMS__"
 CREDENTIAL_PLACEHOLDER = "__VAPI_CREDENTIAL_ID__"
 CREDENTIAL_NAME = "everlast-n8n-x-vapi-secret"
 SECRET_HEADER = "X-Vapi-Secret"
@@ -159,10 +164,36 @@ def strip_private_keys(obj):
     return obj
 
 
-def load_prompt() -> str:
+def deep_merge(base, overlay):
+    """Overlay wins: dicts are merged recursively, lists and values are replaced."""
+    if isinstance(base, dict) and isinstance(overlay, dict):
+        merged = dict(base)
+        for key, value in overlay.items():
+            merged[key] = deep_merge(base[key], value) if key in base else value
+        return merged
+    return overlay
+
+
+def load_job(name: str) -> dict:
+    path = JOBS_DIR / f"{name}.json"
+    if not path.exists():
+        known = ", ".join(p.stem for p in sorted(JOBS_DIR.glob("*.json")))
+        fail(f"{path} nicht gefunden. Vorhandene Stellen: {known}")
+    job = json.loads(path.read_text(encoding="utf-8"))
+    if not job.get("_assistantIdEnv"):
+        fail(f"{path}: _assistantIdEnv fehlt.")
+    return job
+
+
+def load_prompt(variables: dict[str, str]) -> str:
     text = PROMPT_PATH.read_text(encoding="utf-8")
     text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)  # drop maintainer comments
     text = re.sub(r"\n{3,}", "\n\n", text)  # removed comments leave blank lines behind
+    for key, value in variables.items():
+        text = text.replace("{{" + key + "}}", value)
+    missing = sorted(set(re.findall(r"\{\{(\w+)\}\}", text)))
+    if missing:
+        fail(f"Platzhalter ohne Wert in _prompt der Stelle: {', '.join(missing)}")
     return text.strip() + "\n"
 
 
@@ -196,9 +227,10 @@ def discard_drafts(api_key: str, assistant_id: str) -> None:
     say(f"Dashboard-Entwürfe verworfen: {len(drafts)}")
 
 
-def build_payload(credential_id: str, live_prompt: str = "") -> dict:
-    payload = strip_private_keys(json.loads(ASSISTANT_PATH.read_text(encoding="utf-8")))
-    prompt = load_prompt()
+def build_payload(job: dict, credential_id: str, live_prompt: str = "") -> dict:
+    base = json.loads(ASSISTANT_PATH.read_text(encoding="utf-8"))
+    payload = strip_private_keys(deep_merge(base, job))
+    prompt = load_prompt(job.get("_prompt", {}))
     if live_prompt:
         prompt = keep_synced_sections(prompt, live_prompt)
     replaced = False
@@ -210,6 +242,10 @@ def build_payload(credential_id: str, live_prompt: str = "") -> dict:
         fail(f"Platzhalter {PROMPT_PLACEHOLDER} nicht in model.messages gefunden.")
     if (payload.get("server") or {}).get("credentialId") == CREDENTIAL_PLACEHOLDER:
         payload["server"]["credentialId"] = credential_id
+    # The fallback transcriber gets the same terms as the main one.
+    for fallback in get_path(payload, "transcriber.fallbackPlan.transcribers") or []:
+        if fallback.get("customVocabulary") == KEYTERMS_PLACEHOLDER:
+            fallback["customVocabulary"] = get_path(payload, "transcriber.keytermsPrompt") or []
     return payload
 
 
@@ -335,23 +371,34 @@ def ensure_credential(env: dict[str, str], api_key: str, new_ids: dict[str, str]
 def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    args = set(sys.argv[1:])
+    argv = sys.argv[1:]
+    args = set(argv)
+    job_name = DEFAULT_JOB
+    if "--job" in argv:
+        index = argv.index("--job")
+        if index + 1 >= len(argv):
+            fail("--job braucht den Namen einer Datei in vapi/jobs/, z. B. --job cyber-security.")
+        job_name = argv[index + 1]
+    job = load_job(job_name)
+    id_env = job["_assistantIdEnv"]
+    say(f"Stelle: {job_name} ({id_env})")
+
     env = load_env()
     api_key = env.get("VAPI_API_KEY")
     if not api_key:
         fail("VAPI_API_KEY fehlt in .env.")
 
     if "--dry-run" in args:
-        payload = build_payload(env.get("VAPI_CREDENTIAL_ID", CREDENTIAL_PLACEHOLDER))
+        payload = build_payload(job, env.get("VAPI_CREDENTIAL_ID", CREDENTIAL_PLACEHOLDER))
         say("Dry run – keine API-Aufrufe. Payload-Zusammenfassung:")
-        print_summary({**payload, "id": env.get("VAPI_ASSISTANT_ID", "(neu)")})
+        print_summary({**payload, "id": env.get(id_env, "(neu)")})
         say(f"  Payload-Größe: {len(json.dumps(payload))} Bytes")
         return
 
-    assistant_id = env.get("VAPI_ASSISTANT_ID")
+    assistant_id = env.get(id_env)
     if "--discard-draft" in args:
         if not assistant_id:
-            fail("VAPI_ASSISTANT_ID fehlt in .env.")
+            fail(f"{id_env} fehlt in .env.")
         discard_drafts(api_key, assistant_id)
         return
 
@@ -362,14 +409,14 @@ def main() -> None:
 
     if "--verify" in args:
         if not assistant_id:
-            fail("VAPI_ASSISTANT_ID fehlt in .env.")
-        payload = build_payload(env.get("VAPI_CREDENTIAL_ID", CREDENTIAL_PLACEHOLDER), live_prompt)
+            fail(f"{id_env} fehlt in .env.")
+        payload = build_payload(job, env.get("VAPI_CREDENTIAL_ID", CREDENTIAL_PLACEHOLDER), live_prompt)
         sys.exit(0 if verify(api_key, assistant_id, payload) else 2)
 
     new_ids: dict[str, str] = {}
     try:
         cred_id = ensure_credential(env, api_key, new_ids)
-        payload = build_payload(cred_id, live_prompt)
+        payload = build_payload(job, cred_id, live_prompt)
         if assistant_id:
             api("PATCH", f"/assistant/{assistant_id}", api_key, payload)
             say("Assistant aktualisiert (PATCH):", assistant_id)
@@ -379,7 +426,7 @@ def main() -> None:
             if not assistant_id:
                 fail("Assistant angelegt, aber keine ID in der Antwort.")
             say("Assistant angelegt (POST):", assistant_id)
-            new_ids["VAPI_ASSISTANT_ID"] = assistant_id
+            new_ids[id_env] = assistant_id
     finally:
         # Persist whatever was created, even if a later step failed.
         append_env(new_ids)

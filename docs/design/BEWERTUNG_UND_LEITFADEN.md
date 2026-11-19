@@ -41,7 +41,11 @@ Google Sheets                      n8n                                   Vapi
 | Was wird bewertet | kurze Beschreibung | Name des Kriteriums |
 | Score 1 … Score N | Beschreibung jeder Stufe. **Die gefüllten Spalten legen die Skala fest** (z. B. nur Score 1–3 → Skala 1–3) | keine gefüllt → Standardskala 1–5; einzelne Lücken → Standardtext der Stufe |
 
-Startinhalt: Fachliche Eignung 40 %, Motivation 20 %, Kommunikation 20 %, Arbeitsweise & Zusammenarbeit 20 %, jeweils mit beschriebenen Stufen 1–5.
+Stand 19.11., jeweils mit beschriebenen Stufen 1–5:
+
+- **Junior Entwickler:** Fachliche Eignung 40, Motivation 20, Kommunikation 20 (normiert 50 / 25 / 25 %). Startinhalt waren zusätzlich Arbeitsweise & Zusammenarbeit 20 und eine Fallfrage; beides ist mit dem gekürzten Leitfaden entfallen, die Stufen von Fachlicher Eignung und Motivation sind an die verbliebenen Fragen angepasst.
+- **Cyber Security:** nur fachliche Kriterien, je eines pro Frage: Incident Response 35, Web- und API-Sicherheit 35, KI-Sicherheit 30.
+
 Gehalt, Startdatum und Verfügbarkeit sind bewusst **kein** Kriterium: Sie stehen als Eckdaten im Protokoll, senken aber nicht den Score.
 
 ### Leitfaden (eine Zeile pro Frage, in Gesprächsreihenfolge)
@@ -54,7 +58,15 @@ Die Reihenfolge der Zeilen ist die Reihenfolge im Gespräch. Umsortieren = Zeile
 | Kriterium | welches Bewertungskriterium die Frage prüft |
 | Hinweis | Verhalten und Nachfragen für den Agent |
 
-Startinhalt: Einwilligung, Name, Hintergrund, Motivation, API-Projekt, Fallfrage (E-Mails ins CRM automatisieren), LLM-Erfahrung, Zusammenarbeit/Feedback, Lernen, Gehalt, Verfügbarkeit, offene Fragen. Jedes Kriterium wird von mindestens einer Frage abgedeckt; Kommunikation wird über das ganze Gespräch bewertet.
+Jedes Kriterium wird von mindestens einer Frage abgedeckt; Kommunikation wird über das ganze Gespräch bewertet.
+
+- **Junior Entwickler (7 Punkte):** Einwilligung, Name, Grundlagen, Softwareentwicklung, Erfahrung, Verfügbarkeit, offene Fragen. Startinhalt waren 12 Punkte (u. a. Motivation, API-Projekt, Fallfrage, Gehalt).
+- **Cyber Security (3 Fachfragen, 5–8 Minuten):** nach Einwilligung und Name nur Fachfragen, jeweils mit höchstens einer offenen Nachfrage, ohne Lösungshinweise:
+  1. Phishing-Vorfall: „Eine Kollegin hat auf einen Link in einer Phishing-Mail geklickt und dort ihre Zugangsdaten eingegeben. Was tust du in der ersten Stunde?“ → Incident Response
+  2. Webhook absichern: „Ein öffentlich erreichbarer Webhook nimmt Daten von einem externen Dienst an. Wie sicherst du ihn ab?“ → Web- und API-Sicherheit
+  3. KI-Agent: „Ein Kunde möchte einen KI-Agenten einsetzen, der E-Mails liest und Daten in sein CRM schreibt. Welche Risiken siehst du, und wie begrenzt du sie?“ → KI-Sicherheit
+
+  Die Fragen sind Szenarien aus Everlasts eigenem Geschäft (Automatisierungen, Webhooks, KI-Agenten). Offene Szenarien statt Wissensfragen zeigen, wie strukturiert jemand vorgeht, und lassen sich am Telefon gut beantworten.
 
 ## Ablauf der Bewertung (Workflow „Vapi – Bewerberinterview auswerten“)
 
