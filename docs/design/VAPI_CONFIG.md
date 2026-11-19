@@ -16,7 +16,7 @@ Benchmarks, Preise und Alternativen stehen in [PROVIDER_RESEARCH.md](../analysis
 
 | Bereich | Einstellung |
 | --- | --- |
-| LLM | OpenAI `gpt-4.1-mini`, Temperatur 0,4, `maxTokens` 150, Fallback `gpt-4.1` |
+| LLM | OpenAI `gpt-4.1`, Temperatur 0,4, `maxTokens` 150, Fallback `gpt-4.1-mini` |
 | Voice | ElevenLabs `eleven_v4_turbo` mit nativer deutscher Stimme aus der Voice Library, Fallback Cartesia „Jonas“, dann Azure `de-DE-FlorianMultilingualNeural` |
 | Transcriber | AssemblyAI `universal-3-6-pro` (Deutsch), Gesprächskontext, 15 Keyterms, Fallback Soniox `stt-rt-v6` |
 | Server | n8n-Webhook mit Header `X-Vapi-Secret`, nur `end-of-call-report` |
@@ -47,10 +47,10 @@ Der Prompt liegt in `vapi/system-prompt.md`. Das Deploy-Skript entfernt die HTML
 
 | Einstellung | Wert | Warum |
 | --- | --- | --- |
-| `model` | `gpt-4.1-mini` | Niedrigste Time-to-First-Token im EU-Benchmark (P50 316 ms), gutes Deutsch, kein Reasoning-Overhead |
+| `model` | `gpt-4.1` | Bessere Gesprächsführung als `gpt-4.1-mini` bei fast gleicher Time-to-First-Token im EU-Benchmark (P50 339 ms gegenüber 316 ms), gutes Deutsch, kein Reasoning-Overhead. Bis 19.11. lief `gpt-4.1-mini` |
 | `temperature` | 0,4 | Hält sich an den Leitfaden, klingt aber nicht roboterhaft |
 | `maxTokens` | 150 (Default 250) | Erzwingt kurze Beiträge |
-| `fallbackModels` | `gpt-4.1` | Weiterlaufen, wenn das Hauptmodell ausfällt |
+| `fallbackModels` | `gpt-4.1-mini` | Weiterlaufen, wenn das Hauptmodell ausfällt |
 | `promptCacheRetention` | `24h` | Der Prompt (rund 2.000 Token) bleibt gecacht, auch wenn zwischen zwei Interviews Stunden liegen |
 | `tools` | `endCall` mit `rejectionPlan` | Der Agent legt selbst auf. Eine Regex blockiert das Auflegen, wenn die letzte Aussage des Bewerbers „warte“, „Moment“ oder „noch eine Frage“ enthält |
 
@@ -122,17 +122,17 @@ Der Prompt liegt in `vapi/system-prompt.md`. Das Deploy-Skript entfernt die HTML
 
 | Einstellung | Wert | Warum |
 | --- | --- | --- |
-| `server.url` | `https://n8n.mal-zeta.de/webhook/vapi/interview` | Production-URL des n8n-Webhooks (REQ-2.4). Hat Vorrang vor der URL an der Telefonnummer oder der Organisation |
-| `server.credentialId` | Credential `everlast-n8n-x-vapi-secret` (`07b6d617-0959-44bb-8e9f-495fe910a22e`) | Typ `custom-credential` mit Bearer-Plan, `headerName: "X-Vapi-Secret"` und `bearerPrefixEnabled: false`. Vapi sendet damit `X-Vapi-Secret: <Secret>`, und n8n prüft den Header per Header Auth. Das Secret steht nur in `.env` und im Credential, nie im Repo |
-| `server.timeoutSeconds`, `server.backoffPlan` | 20 s; exponentiell, 3 Retries ab 2 s | Ein kurzer Ausfall von n8n kostet kein Protokoll. Doppelte Zustellungen fängt n8n über die Call-ID ab (REQ-3.7) |
+| Server-URL (Org-Einstellungen) | `https://n8n.mal-zeta.de/webhook/vapi/interview` | Production-URL des n8n-Webhooks (REQ-2.4). Vapi nimmt die erste vorhandene URL in der Reihenfolge Assistant → Telefonnummer → Organisation |
+| Credential (Org-Einstellungen) | `everlast-n8n-x-vapi-secret` (`07b6d617-0959-44bb-8e9f-495fe910a22e`) | Typ `custom-credential` mit Bearer-Plan, `headerName: "X-Vapi-Secret"` und `bearerPrefixEnabled: false`. Vapi sendet damit `X-Vapi-Secret: <Secret>`, und n8n prüft den Header per Header Auth. Das Secret steht nur in `.env` und im Credential, nie im Repo |
+| `server` am Assistant | `null` | Bewusst leer, damit die Org-Einstellung greift (siehe unten). `null` in `assistant.json` entfernt einen früher gespeicherten Wert, ein fehlendes Feld würde ihn beim `PATCH` stehen lassen |
 | `serverMessages` | `["end-of-call-report"]` | Nur das Event, das n8n braucht. Der Default schickt unter anderem auch `conversation-update`, `speech-update` und `status-update`, also viele unnötige Aufrufe |
 
-> **Stolperfalle: Testanrufe aus dem Dashboard kommen ohne Secret an.**
+> **Warum der Webhook in den Org-Einstellungen steht**
 >
-> - **Was passiert:** „Talk to Assistant“ schickt die komplette Konfiguration als `assistantOverrides` mit, inklusive `server`. Vapi stuft die Server-URL damit als „vom Request geliefert“ ein und lässt das Credential weg. Im Call-Log steht dann `serverMessage.credentialsWithheld`. n8n bekommt den Bericht ohne `X-Vapi-Secret`, antwortet mit 403 und legt keine Ausführung an.
-> - **Wer betroffen ist:** Echte Anrufe über eine Telefonnummer nutzen die gespeicherte Konfiguration und sind nicht betroffen.
-> - **Lösung:** Server-URL und Credential auf Organisationsebene setzen (Dashboard → Org-Einstellungen; per API-Key nicht möglich) und `server` aus dem Assistant entfernen. Org-Einstellungen gelten als vertrauenswürdig, das Credential wird dann mitgeschickt.
-> - **Bis dahin:** Verpasste Anrufe lassen sich nachträglich verarbeiten. Dazu `GET /call/{id}` bei Vapi holen und als `end-of-call-report` mit Secret an den Webhook schicken.
+> - **Problem:** „Talk to Assistant“ schickt die komplette Konfiguration als `assistantOverrides` mit. Stand `server` am Assistant, galt die Server-URL damit als „vom Request geliefert“, und Vapi ließ das Credential weg (`serverMessage.credentialsWithheld` im Call-Log). n8n bekam den Bericht ohne `X-Vapi-Secret`, antwortete mit 403 und legte keine Ausführung an.
+> - **Lösung (seit 19.11.):** Server-URL und Credential sind auf Organisationsebene gesetzt (nur im Dashboard möglich, die Org-API ist mit dem privaten Key nicht erreichbar). Org-Einstellungen gelten als vertrauenswürdig, das Credential wird bei allen Anrufen mitgeschickt.
+> - **Nebenwirkung:** Der `backoffPlan` (3 Retries) hing an `server` am Assistant. Ob die Org-Einstellung Retries hat, lässt sich per API nicht prüfen. Doppelte Zustellungen fängt n8n weiter über die Call-ID ab (REQ-3.7).
+> - **Verpasster Report:** `GET /call/{id}` bei Vapi holen und als `end-of-call-report` mit Secret an den Webhook schicken.
 
 ### Nachrichten
 
@@ -181,7 +181,7 @@ Ziel (REQ-7.1): weniger als etwa 1 Sekunde vom Ende der Aussage bis zum Beginn d
 | --- | --- | --- |
 | Schnelle Turn-Erkennung | Semantische End-of-Turn-Erkennung von AssemblyAI, kein `smartEndpointingPlan` | Ist das Modell sicher, antwortet der Agent nach 0,5 s statt nach festen Pausen. Mit Flux lag der Schnitt im ersten Test bei 1,7 s, weil es bei Unsicherheit bis zu 5 s wartete |
 | Kurze Mindestwartezeit | `startSpeakingPlan.waitSeconds` 0,3 (Default 0,4) | Die Untergrenze sinkt um 100 ms. Ist die Pipeline ohnehin langsamer, ändert das nichts |
-| Schnelles LLM | `gpt-4.1-mini` mit Prompt-Caching (24 h) | TTFT P50 rund 316 ms |
+| Schnelles LLM | `gpt-4.1` mit Prompt-Caching (24 h) | TTFT P50 rund 339 ms |
 | Kurze Antworten | `maxTokens` 150, Prompt: höchstens 2 Sätze, 1 Frage | Weniger Text bis zum ersten Satzende, kürzere Turns |
 | Früher TTS-Start | `chunkPlan.minCharacters` 12 | Die TTS startet schon mit dem ersten Satzteil |
 | Schnelle TTS | ElevenLabs `eleven_v4_turbo` | 129–150 ms bis zum ersten Audio (EU-Benchmark bzw. Hersteller) |
@@ -206,7 +206,7 @@ Geprüft am 2026-11-15 gegen die OpenAPI-Spec und die Live-API:
 - **Cartesia als Fallback:** `FallbackCartesiaVoice` hat inzwischen ein `model`-Feld (Stand Spec 2026-11-15), `sonic-3.6` wird gespeichert.
 - **Stimmen:** ElevenLabs bietet über Vapis Key nur die Standardstimmen, für native deutsche Stimmen braucht es einen eigenen Key. Die Cartesia-Stimmen „Nico“ und „Viktoria“ lehnt die API ab.
 - **Versionen:** Die Organisation hat Assistant-Versionierung. Jeder `PATCH` veröffentlicht eine neue Version (`GET /assistant/{id}/versions`). Das Dashboard bearbeitet einen eigenen Entwurf (`GET /assistant/{id}/draft`), den spätere API-Änderungen nicht erreichen. **„Talk to Assistant“ testet diesen Entwurf** (er wird als `assistantOverrides` mitgeschickt), nicht die veröffentlichte Version. Nach jedem Deploy oder Sync deshalb den Entwurf verwerfen, bevor man testet: im Dashboard oder mit `python vapi/deploy.py --discard-draft` (`DELETE /assistant/{id}/draft/{draftId}`). Das Dashboard legt beim nächsten Öffnen einen frischen Entwurf aus der neuesten Version an. Einen veralteten Entwurf nie veröffentlichen, er würde die Konfiguration zurückdrehen (so geschehen mit v7 am 15.11.).
-- **Dashboard-Testanrufe:** Sie kommen ohne Webhook-Credential an (siehe Abschnitt 4, „Stolperfalle“).
+- **Dashboard-Testanrufe:** Mit `server` am Assistant kamen sie ohne Webhook-Credential an. Deshalb steht der Webhook in den Org-Einstellungen (Abschnitt 4).
 - **Formatter:** Die `formatPlan`-Formatter sind englisch und deshalb eingeschränkt.
 - **Ersetzungen:** `exact`-Replacements ersetzen standardmäßig nur das erste Vorkommen, daher `replaceAllEnabled: true`.
 - **API-Zugriff:** Die API verlangt einen eigenen User-Agent. Cloudflare blockt den Standard-Agent von Python (Fehler 1010).
@@ -216,5 +216,4 @@ Geprüft am 2026-11-15 gegen die OpenAPI-Spec und die Live-API:
 - **Testgespräch im Dashboard** („Talk to Assistant“): Stimme, Aussprache (n8n, Vapi, Everlast, Make), Stille-Hooks und Auflegen prüfen, insbesondere ob es genau eine Verabschiedung gibt.
 - **n8n:** Webhook `/webhook/vapi/interview` als Production-URL aktiv; Header-Auth-Credential mit Header `X-Vapi-Secret` und demselben Secret wie in `.env`.
 - **Telefonnummer (REQ-1.8):** nicht angelegt. Bei Bedarf in Vapi kaufen oder importieren und diesem Assistant zuweisen.
-- **Webhook für Dashboard-Tests:** Server-URL und Credential in den Org-Einstellungen setzen, dann `server` aus `assistant.json` entfernen (siehe Abschnitt 4, „Stolperfalle“).
 - **Optional:** `artifactPlan.transcriptPlan.assistantName` / `userName` (z. B. „Interviewer“ / „Bewerber“) für ein lesbareres Transkript. Nur zusammen mit dem n8n-Workflow ändern, falls dieser die Präfixe „AI:“ / „User:“ auswertet.

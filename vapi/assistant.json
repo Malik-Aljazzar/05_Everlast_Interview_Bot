@@ -1,5 +1,5 @@
 {
-  "_comment": "Vapi assistant config (POST/PATCH /assistant). No secrets. Keys starting with '_' are stripped by deploy.py. __SYSTEM_PROMPT__ is replaced with vapi/system-prompt.md, __VAPI_CREDENTIAL_ID__ with the X-Vapi-Secret credential. Explained in docs/design/VAPI_CONFIG.md.",
+  "_comment": "Vapi assistant config (POST/PATCH /assistant). No secrets. Keys starting with '_' are stripped by deploy.py. __SYSTEM_PROMPT__ is replaced with vapi/system-prompt.md. Explained in docs/design/VAPI_CONFIG.md.",
   "name": "Everlast Interview - Junior Entwickler",
   "metadata": {
     "jobId": "junior-entwickler-vollzeit",
@@ -21,8 +21,8 @@
 
   "model": {
     "provider": "openai",
-    "model": "gpt-4.1-mini",
-    "fallbackModels": ["gpt-4.1"],
+    "model": "gpt-4.1",
+    "fallbackModels": ["gpt-4.1-mini"],
     "temperature": 0.4,
     "maxTokens": 150,
     "promptCacheRetention": "24h",
@@ -185,12 +185,8 @@
     }
   ],
 
-  "server": {
-    "url": "https://n8n.mal-zeta.de/webhook/vapi/interview",
-    "credentialId": "__VAPI_CREDENTIAL_ID__",
-    "timeoutSeconds": 20,
-    "backoffPlan": { "type": "exponential", "maxRetries": 3, "baseDelaySeconds": 2 }
-  },
+  "_server": "Webhook URL and X-Vapi-Secret credential are set in the Vapi org settings, not here: dashboard tests send the assistant as assistantOverrides and Vapi withholds the credential of a server given there. null removes a server stored earlier. See VAPI_CONFIG.md section 4.",
+  "server": null,
   "serverMessages": ["end-of-call-report"],
 
   "artifactPlan": {

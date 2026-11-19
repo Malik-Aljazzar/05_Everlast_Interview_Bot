@@ -208,7 +208,7 @@ def build_payload(credential_id: str, live_prompt: str = "") -> dict:
             replaced = True
     if not replaced:
         fail(f"Platzhalter {PROMPT_PLACEHOLDER} nicht in model.messages gefunden.")
-    if payload.get("server", {}).get("credentialId") == CREDENTIAL_PLACEHOLDER:
+    if (payload.get("server") or {}).get("credentialId") == CREDENTIAL_PLACEHOLDER:
         payload["server"]["credentialId"] = credential_id
     return payload
 
@@ -234,6 +234,8 @@ def diff(expected, actual, path: str = "") -> list[str]:
         for i, (e, a) in enumerate(zip(expected, actual)):
             out += diff(e, a, f"{path}[{i}]")
         return out
+    if expected is None:  # null in assistant.json removes the field
+        return [] if actual is None or actual is _MISSING else [f"{path}: erwartet entfernt, gespeichert {actual!r}"]
     if actual is _MISSING:
         return [f"{path}: fehlt (erwartet {expected!r})"]
     if isinstance(expected, (int, float)) and isinstance(actual, (int, float)) \
