@@ -1,0 +1,59 @@
+services:
+  nginx:
+    image: nginx:1.30.7-alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Regeln: nur /webhook/* öffentlich, alles andere nur Admin-IP (nginx/conf.d/n8n.conf)
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - n8n
+
+  # Nur für Zertifikate: docker compose run --rm certbot renew (Cron: /etc/cron.d/certbot-renew)
+  certbot:
+    image: certbot/certbot:v5.10.0
+    profiles: ["tools"]
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+
+  # Interview-UI (React + nginx, ui/). Kein eigener Port: nur über nginx unter https://everlast.mal-zeta.de,
+  # nur von der Admin-IP (nginx/conf.d/everlast.conf und ui/nginx.conf).
+  ui:
+    build: ./ui
+    image: everlast-ui:latest
+    container_name: ui
+    restart: unless-stopped
+    depends_on:
+      - n8n
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:2.47.7
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      - N8N_HOST=${DOMAIN}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://${DOMAIN}/
+      - N8N_PROXY_HOPS=1
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_DIAGNOSTICS_ENABLED=false
+      # Heap-Limit über den Node-Standard (~500 MB bei 1 GB RAM) heben, Swap fängt Spitzen ab
+      - NODE_OPTIONS=--max-old-space-size=1024
+      - GENERIC_TIMEZONE=${TIMEZONE}
+      - TZ=${TIMEZONE}
+      # Ausführungsdaten (inkl. Transkripte) nach 7 Tagen löschen
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:

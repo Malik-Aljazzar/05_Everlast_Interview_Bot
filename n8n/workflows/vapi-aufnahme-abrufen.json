@@ -1,0 +1,388 @@
+[
+  {
+    "updatedAt": "2026-11-19T18:33:55.813Z",
+    "createdAt": "2026-11-15T16:10:52.911Z",
+    "id": "R9j0pz0buYMqgHlZ",
+    "name": "Vapi – Aufnahme abrufen",
+    "description": "Leitet Aufnahme-Links aus der Tabelle auf einen frischen, 30 Minuten gültigen Vapi-Link weiter. Die Aufnahme bleibt bei Vapi.",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "path": "vapi/aufnahme",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "7503bae3-c4f6-4294-8bfd-3a047553b667",
+        "name": "Aufnahme-Link",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.2,
+        "position": [
+          0,
+          304
+        ],
+        "webhookId": "1cf1f17c-dcb7-4ee8-946b-54d0f861a411"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "uuid",
+                "leftValue": "={{ $json.query?.call ?? \"\" }}",
+                "rightValue": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "operator": {
+                  "type": "string",
+                  "operation": "regex"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "aefed72a-729e-4528-aa99-2833ae655c2d",
+        "name": "Gültige Call-ID?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          240,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "url": "=https://api.vapi.ai/call/{{ $json.query.call }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "everlast-n8n-aufnahme/1.0"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "777dc9d9-bc90-47a5-9c88-2df9ccc8bbf3",
+        "name": "Call bei Vapi laden",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          544,
+          464
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "rEWuAIoBRZRraSyN",
+            "name": "Header Auth account 2"
+          }
+        },
+        "onError": "continueErrorOutput",
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 1000
+      },
+      {
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "Ungültiger Link: Call-ID fehlt oder ist ungültig.",
+          "options": {
+            "responseCode": 400,
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Content-Type",
+                  "value": "text/plain; charset=utf-8"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
+        },
+        "id": "6ff7fb7b-50d0-4dcf-a443-a33683846af3",
+        "name": "Ungültige Call-ID",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          480,
+          480
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "has-recording",
+                "leftValue": "={{ $json.artifact?.presignedStereoUrl ?? $json.artifact?.presignedMonoUrl ?? \"\" }}",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "598b1476-7b1d-43e4-a686-e3bd13ddff92",
+        "name": "Aufnahme vorhanden?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          784,
+          352
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "redirect",
+          "redirectURL": "={{ $json.artifact.presignedStereoUrl ?? $json.artifact.presignedMonoUrl }}",
+          "options": {
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                },
+                {
+                  "name": "Referrer-Policy",
+                  "value": "no-referrer"
+                }
+              ]
+            }
+          }
+        },
+        "id": "22dca09d-6b18-4c47-84d1-ff951668774c",
+        "name": "Zur Aufnahme weiterleiten",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          1024,
+          256
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "Zu diesem Gespräch gibt es keine Aufnahme.",
+          "options": {
+            "responseCode": 404,
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Content-Type",
+                  "value": "text/plain; charset=utf-8"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
+        },
+        "id": "fcb627e9-823e-4188-8b1e-4c4603417807",
+        "name": "Keine Aufnahme",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          1024,
+          464
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "Gespräch nicht gefunden oder Vapi nicht erreichbar.",
+          "options": {
+            "responseCode": 404,
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Content-Type",
+                  "value": "text/plain; charset=utf-8"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
+        },
+        "id": "21949b15-d5f4-4294-b90a-c79e4719e50e",
+        "name": "Call nicht gefunden",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          784,
+          592
+        ]
+      },
+      {
+        "parameters": {
+          "content": "## Vapi – Aufnahme abrufen\nVapi speichert Aufnahmen privat und gibt nur Links heraus, die 30 Minuten gelten. Die Tabelle verlinkt deshalb hierher (`/webhook/vapi/aufnahme?call=<Call-ID>`). Bei jedem Klick holt der Workflow den Call bei Vapi und leitet auf einen frischen Link weiter. Die Aufnahme bleibt bei Vapi, n8n speichert keine Kopie. Zugriff hat, wer den Link kennt (Call-IDs sind zufällig, der Link steht nur in Tabelle und Protokoll).",
+          "height": 200,
+          "width": 700,
+          "color": 7
+        },
+        "id": "eeba9e23-bee2-4084-8938-4bf489d4b93c",
+        "name": "Sticky Note 4e6ba475",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -432,
+          16
+        ]
+      }
+    ],
+    "connections": {
+      "Aufnahme-Link": {
+        "main": [
+          [
+            {
+              "node": "Gültige Call-ID?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gültige Call-ID?": {
+        "main": [
+          [
+            {
+              "node": "Call bei Vapi laden",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Ungültige Call-ID",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call bei Vapi laden": {
+        "main": [
+          [
+            {
+              "node": "Aufnahme vorhanden?",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Call nicht gefunden",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aufnahme vorhanden?": {
+        "main": [
+          [
+            {
+              "node": "Zur Aufnahme weiterleiten",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Keine Aufnahme",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true,
+      "errorWorkflow": "nZm9wPmSbW75hhOE",
+      "timezone": "Europe/Berlin",
+      "saveManualExecutions": true,
+      "saveDataErrorExecution": "all",
+      "saveDataSuccessExecution": "none",
+      "binaryMode": "separate"
+    },
+    "staticData": null,
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    },
+    "nodeGroups": [
+      {
+        "id": "a172e4e8-b468-4e57-bc38-c2b1a5d363af",
+        "name": "Aufnahme bei Vapi holen",
+        "nodeIds": [
+          "777dc9d9-bc90-47a5-9c88-2df9ccc8bbf3",
+          "598b1476-7b1d-43e4-a686-e3bd13ddff92",
+          "22dca09d-6b18-4c47-84d1-ff951668774c",
+          "fcb627e9-823e-4188-8b1e-4c4603417807",
+          "21949b15-d5f4-4294-b90a-c79e4719e50e"
+        ],
+        "description": "Call laden und auf den frischen, 30 Minuten gültigen Aufnahme-Link weiterleiten."
+      }
+    ],
+    "pinData": {},
+    "versionId": "4b29af44-9c47-4f0e-94bf-814ee2c0ef9a",
+    "activeVersionId": "4b29af44-9c47-4f0e-94bf-814ee2c0ef9a",
+    "versionCounter": 6,
+    "triggerCount": 1,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-11-15T16:10:52.915Z",
+        "createdAt": "2026-11-15T16:10:52.915Z",
+        "role": "workflow:owner",
+        "workflowId": "R9j0pz0buYMqgHlZ",
+        "projectId": "vnJz6ISVsc7UjnAG",
+        "project": {
+          "updatedAt": "2026-11-15T11:46:40.140Z",
+          "createdAt": "2026-11-15T11:45:24.161Z",
+          "id": "vnJz6ISVsc7UjnAG",
+          "name": "Malik Aljazzar <malik.aljazzar@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "d72c5249-a99d-433b-bfb3-4c72b1365a36"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": "Wiederholung bei Netzwerkfehlern",
+      "description": "Vapi-Aufruf wird bei Fehler einmal wiederholt (kurze Wartezeit, weil jemand auf den Link geklickt hat)."
+    }
+  }
+]

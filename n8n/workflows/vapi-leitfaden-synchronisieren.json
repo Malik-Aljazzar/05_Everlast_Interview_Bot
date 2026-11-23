@@ -1,0 +1,416 @@
+[
+  {
+    "updatedAt": "2026-11-22T17:17:11.561Z",
+    "createdAt": "2026-11-15T13:51:48.146Z",
+    "id": "RGKss8vJmfN3nvF1",
+    "name": "Vapi – Leitfaden synchronisieren",
+    "description": "Übernimmt Stellenfakten und Interview-Leitfaden aus den n8n Data Tables in den System-Prompt der Vapi-Assistants. Wird nach jedem Speichern in der UI aufgerufen und schreibt nur bei Änderungen; manuell startbar.",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "19dd5997-a7a5-478c-8b8a-fe47836c482b",
+        "name": "Jetzt synchronisieren",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          200
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "a4f5d1d1-706f-4a9d-8c31-c729397afbbc",
+        "name": "Prompt-Abschnitte bauen",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          740,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "// Baut je Stelle (Assistant-ID) aus den Data Tables die Prompt-Abschnitte \"Stelle\" und \"Leitfaden\" für Vapi.\nconst liste = (text) => String(text ?? '').split(/\\n|;/).map((s) => s.trim()).filter(Boolean);\nconst unterpunkte = (text) => liste(text).map((x) => '  - ' + x);\n\nconst nachPosition = (a, b) => (Number(a.position) || 0) - (Number(b.position) || 0);\nconst leitfaden = $('Leitfaden lesen').all().map((i) => i.json).filter((r) => r.assistantId && r.frage);\nconst stellen = $('Stellen lesen').all().map((i) => i.json).filter((r) => r.assistantId);\n\nreturn stellen.map((s) => {\n  const id = String(s.assistantId).trim();\n  // Reihenfolge = Spalte position (in der UI per Drag & Drop bzw. Pfeilen festgelegt).\n  const fragen = leitfaden.filter((l) => String(l.assistantId).trim() === id).sort(nachPosition);\n\n  const abschnittStelle = [\n    'Nur diese Fakten darfst du nennen:',\n    '',\n    '- Stelle: ' + s.stelle,\n    '- Unternehmen: ' + (s.unternehmen ?? ''),\n    '- Aufgaben und Anforderungen:',\n    ...unterpunkte(s.beschreibung),\n    '',\n    'Alles andere weißt du nicht, zum Beispiel Gehalt der Stelle, Benefits, Homeoffice oder Remote, Arbeitszeiten, Team, Kunden, Ablauf und Dauer des Bewerbungsprozesses. Erfinde dazu nichts. Sag ehrlich, dass du das nicht weißt und das HR-Team die Frage beantwortet.',\n  ].join('\\n');\n\n  const schritte = fragen.map((f, i) =>\n    (i + 1) + '. ' + f.thema + ': „' + String(f.frage).trim() + '“' + (String(f.hinweis ?? '').trim() ? ' ' + String(f.hinweis).trim() : '')\n  );\n  schritte.push((fragen.length + 1) + '. Abschluss: siehe unten.');\n  const abschnittLeitfaden = [\n    'Arbeite die Punkte in dieser Reihenfolge ab. Stell die Fragen sinngemäß so wie hier, damit alle Bewerber dieselben Kernfragen bekommen.',\n    '',\n    ...schritte,\n  ].join('\\n');\n\n  return { json: { assistantId: id, stelle: s.stelle, anzahlFragen: fragen.length, abschnittStelle, abschnittLeitfaden } };\n});"
+        }
+      },
+      {
+        "id": "f9e9a7ee-00ce-4721-89fe-647b10578558",
+        "name": "Assistant laden",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          980,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://api.vapi.ai/assistant/{{ $json.assistantId }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "everlast-n8n-sync/1.0"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "rEWuAIoBRZRraSyN",
+            "name": "Header Auth account 2"
+          }
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000
+      },
+      {
+        "id": "6e3693ca-d242-4dfe-a085-52d21ea192db",
+        "name": "Prompt aktualisieren",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1220,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "// Ersetzt im Vapi-System-Prompt die Abschnitte \"# Stelle\" und \"# Leitfaden\".\nconst a = $('Prompt-Abschnitte bauen').item.json;\nconst model = $json.model ?? {};\nconst messages = model.messages ?? [];\nconst index = messages.findIndex((m) => m.role === 'system');\nif (index < 0) throw new Error('Kein System-Prompt im Assistant ' + a.assistantId + '.');\n\nconst ersetzen = (text, start, ende, inhalt) => {\n  const re = new RegExp('(' + start + '\\\\n)([\\\\s\\\\S]*?)(\\\\n' + ende + '\\\\n)');\n  if (!re.test(text)) throw new Error('Abschnitt \"' + start + '\" fehlt im Vapi-Prompt von ' + a.assistantId + '.');\n  return text.replace(re, (m, kopf, alt, fuss) => kopf + '\\n' + inhalt + '\\n' + fuss);\n};\n\nconst alt = messages[index].content ?? '';\nlet neu = ersetzen(alt, '# Stelle', '# Leitfaden', a.abschnittStelle);\nneu = ersetzen(neu, '# Leitfaden', '# Gesprächsregeln', a.abschnittLeitfaden);\n\nconst neueMessages = messages.map((m, i) => (i === index ? { ...m, content: neu } : m));\nreturn { json: {\n  assistantId: a.assistantId,\n  name: $json.name,\n  geaendert: neu !== alt,\n  model: { ...model, messages: neueMessages },\n} };"
+        }
+      },
+      {
+        "id": "da16df49-f173-4681-8617-c19ebd1e4fdc",
+        "name": "Nur bei Änderung",
+        "type": "n8n-nodes-base.filter",
+        "typeVersion": 2.4,
+        "position": [
+          1460,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "changed",
+                "leftValue": "={{ $json.geaendert }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "431814e8-3ed1-4328-9b68-a85a8902e49d",
+        "name": "Assistant aktualisieren",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          1700,
+          300
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://api.vapi.ai/assistant/{{ $json.assistantId }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "User-Agent",
+                "value": "everlast-n8n-sync/1.0"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ model: $json.model }) }}",
+          "options": {}
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "rEWuAIoBRZRraSyN",
+            "name": "Header Auth account 2"
+          }
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000
+      },
+      {
+        "id": "f807ed41-fc06-4b27-9f8b-f5317af3b0a6",
+        "name": "Sticky Note faa316a1",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          0,
+          -60
+        ],
+        "parameters": {
+          "content": "## Vapi – Leitfaden synchronisieren\nHR pflegt Stellenfakten und Interviewfragen in der UI (n8n Data Tables „Stellen“ und „Leitfaden“). Nach jedem Speichern ruft die UI-API diesen Workflow auf. Er baut daraus die Abschnitte „# Stelle“ und „# Leitfaden“ des Vapi-System-Prompts und schreibt nur bei einer Änderung. Kein n8n-Aufruf während des Gesprächs, also keine Zusatzlatenz.",
+          "color": 7,
+          "width": 700,
+          "height": 200
+        }
+      },
+      {
+        "id": "729cb22c-a890-4947-a0de-1b022cca1c07",
+        "name": "Aufruf aus UI",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          0,
+          420
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "a4fd4467-55f8-4bca-ba4d-20ec655d5531",
+        "name": "Stellen lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          260,
+          300
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "8xM8IZCVDEqUj0tt"
+          },
+          "returnAll": true
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "executeOnce": true
+      },
+      {
+        "id": "7c933437-19f5-4696-949a-47cd19fc94c1",
+        "name": "Leitfaden lesen",
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          500,
+          300
+        ],
+        "parameters": {
+          "resource": "row",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "fZtKK4sQunxRZCnA"
+          },
+          "returnAll": true,
+          "orderBy": true,
+          "orderByColumn": "position",
+          "orderByDirection": "ASC"
+        },
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "executeOnce": true
+      }
+    ],
+    "connections": {
+      "Prompt-Abschnitte bauen": {
+        "main": [
+          [
+            {
+              "node": "Assistant laden",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Assistant laden": {
+        "main": [
+          [
+            {
+              "node": "Prompt aktualisieren",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prompt aktualisieren": {
+        "main": [
+          [
+            {
+              "node": "Nur bei Änderung",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Nur bei Änderung": {
+        "main": [
+          [
+            {
+              "node": "Assistant aktualisieren",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Jetzt synchronisieren": {
+        "main": [
+          [
+            {
+              "node": "Stellen lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aufruf aus UI": {
+        "main": [
+          [
+            {
+              "node": "Stellen lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Stellen lesen": {
+        "main": [
+          [
+            {
+              "node": "Leitfaden lesen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leitfaden lesen": {
+        "main": [
+          [
+            {
+              "node": "Prompt-Abschnitte bauen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true,
+      "errorWorkflow": "nZm9wPmSbW75hhOE",
+      "timezone": "Europe/Berlin",
+      "saveManualExecutions": true,
+      "saveDataErrorExecution": "all",
+      "saveDataSuccessExecution": "none"
+    },
+    "staticData": {
+      "node:Stündlich": {
+        "recurrenceRules": [
+          null
+        ],
+        "recurrenceRuleSignatures": [
+          null
+        ]
+      },
+      "node:Jede Minute prüfen": {
+        "recurrenceRules": [
+          null
+        ],
+        "recurrenceRuleSignatures": [
+          null
+        ]
+      }
+    },
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    },
+    "nodeGroups": [
+      {
+        "id": "3257dfb3-86a8-43a4-8bd0-df6cb3aa2bc0",
+        "name": "Tabelle lesen",
+        "nodeIds": [
+          "a4f5d1d1-706f-4a9d-8c31-c729397afbbc"
+        ],
+        "description": "Stellen und Leitfaden aus Google Sheets lesen und je Assistant die Prompt-Abschnitte bauen."
+      },
+      {
+        "id": "6bca0b29-f2fe-4bfc-899d-aedcc71b7e14",
+        "name": "Vapi aktualisieren",
+        "nodeIds": [
+          "f9e9a7ee-00ce-4721-89fe-647b10578558",
+          "6e3693ca-d242-4dfe-a085-52d21ea192db",
+          "da16df49-f173-4681-8617-c19ebd1e4fdc",
+          "431814e8-3ed1-4328-9b68-a85a8902e49d"
+        ],
+        "description": "Aktuellen Prompt laden, Abschnitte ersetzen und nur bei Änderung per PATCH speichern."
+      }
+    ],
+    "pinData": null,
+    "versionId": "31666db3-32e9-40e0-b5cc-cef4c78908c8",
+    "activeVersionId": "31666db3-32e9-40e0-b5cc-cef4c78908c8",
+    "versionCounter": 10,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-11-15T13:51:48.148Z",
+        "createdAt": "2026-11-15T13:51:48.148Z",
+        "role": "workflow:owner",
+        "workflowId": "RGKss8vJmfN3nvF1",
+        "projectId": "vnJz6ISVsc7UjnAG",
+        "project": {
+          "updatedAt": "2026-11-15T11:46:40.140Z",
+          "createdAt": "2026-11-15T11:45:24.161Z",
+          "id": "vnJz6ISVsc7UjnAG",
+          "name": "Malik Aljazzar <malik.aljazzar@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "d72c5249-a99d-433b-bfb3-4c72b1365a36"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": "Aufgaben und Anforderungen als ein Feld",
+      "description": "Prompt-Abschnitt Stelle nutzt die neue Spalte beschreibung statt aufgaben und anforderungen."
+    }
+  }
+]

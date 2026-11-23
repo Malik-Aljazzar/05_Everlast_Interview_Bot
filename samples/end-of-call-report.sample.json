@@ -1,0 +1,52 @@
+{
+  "message": {
+    "type": "end-of-call-report",
+    "endedReason": "assistant-ended-call",
+    "startedAt": "2026-11-15T13:02:10.000Z",
+    "endedAt": "2026-11-15T13:13:52.000Z",
+    "call": {
+      "id": "test-call-0001",
+      "assistantId": "test-assistant",
+      "type": "webCall"
+    },
+    "assistant": {
+      "id": "test-assistant",
+      "name": "Everlast Interview – Junior Entwickler"
+    },
+    "artifact": {
+      "transcript": "AI: Hallo, hier ist Mia, die KI-Assistentin von Everlast Consulting ...\nUser: Ja, passt.",
+      "recording": {
+        "stereoUrl": "https://storage.vapi.ai/test-call-0001-stereo.wav"
+      },
+      "messages": [
+        { "role": "system", "message": "System-Prompt (gekürzt)" },
+        { "role": "bot", "message": "Hallo, hier ist Mia, die KI-Assistentin von Everlast Consulting. Ich führe heute ein erstes Kennenlerngespräch mit dir für die Stelle als Junior Entwickler. Das Gespräch wird aufgezeichnet und anschließend automatisch ausgewertet, die Entscheidung trifft aber immer unser HR-Team. Bist du damit einverstanden?" },
+        { "role": "user", "message": "Ja, das passt, gerne." },
+        { "role": "bot", "message": "Super, danke dir. Wie heißt du?" },
+        { "role": "user", "message": "Ich bin Jonas Becker." },
+        { "role": "bot", "message": "Freut mich, Jonas. Erzähl doch kurz, was du bisher gemacht hast." },
+        { "role": "user", "message": "Ich studiere Wirtschaftsinformatik in Ulm, bin jetzt im letzten Semester und schreibe gerade meine Bachelorarbeit. Nebenbei arbeite ich seit anderthalb Jahren als Werkstudent bei einem Logistikunternehmen in der IT. Da kümmere ich mich hauptsächlich um kleinere interne Tools und um Schnittstellen zwischen unserem Lagersystem und der Buchhaltung." },
+        { "role": "bot", "message": "Klingt spannend. Was reizt dich an der Stelle bei Everlast?" },
+        { "role": "user", "message": "Ehrlich gesagt hab ich mich in den letzten Monaten total in das Thema KI-Automatisierung reingefuchst. Ich hab euren YouTube-Kanal entdeckt und fand die Voice-Agent-Projekte richtig cool. Ich will nicht nur interne Tools bauen, sondern direkt mit Kunden echte Prozesse automatisieren. Und bei einem kleineren Team lernt man vermutlich schneller als im Konzern." },
+        { "role": "bot", "message": "Erzähl mir von einem Projekt, bei dem du eine API angebunden hast." },
+        { "role": "user", "message": "Bei der Arbeit hab ich zum Beispiel die REST-API von unserem Versanddienstleister angebunden. Das ist ein Python-Skript, das alle fünfzehn Minuten neue Sendungen abholt, die Trackingnummern in unser Lagersystem schreibt und bei Fehlern eine Mail an das Team schickt. Am Anfang hatten wir Probleme mit dem Rate Limit, da hab ich dann ein Retry mit Backoff eingebaut." },
+        { "role": "bot", "message": "Wie würdest du vorgehen, wenn ein Kunde eingehende Anfragen per E-Mail automatisch sortieren und beantworten lassen möchte?" },
+        { "role": "user", "message": "Ich würde erst mal mit dem Kunden klären, welche Arten von Anfragen es gibt und was davon wirklich automatisch beantwortet werden darf. Technisch würde ich in n8n einen Trigger auf das Postfach setzen, die Mail von einem LLM klassifizieren lassen und je nach Kategorie entweder einen Antwortentwurf erstellen oder ein Ticket anlegen. Am Anfang würde ich die Antworten nicht direkt rausschicken, sondern als Entwurf, damit jemand drüberschaut." },
+        { "role": "bot", "message": "Welche Erfahrung hast du schon mit LLMs oder Prompting?" },
+        { "role": "user", "message": "Privat hab ich mit der OpenAI-API und mit Claude rumprobiert, zum Beispiel einen kleinen Bot für unseren Sportverein, der Fragen zu Trainingszeiten beantwortet. Und ich hab in n8n einen Workflow gebaut, der Rechnungen aus PDFs ausliest. Mit strukturierten Ausgaben, also JSON-Schema, hab ich auch schon gearbeitet. Produktiv im Kundeneinsatz war das aber noch nicht." },
+        { "role": "bot", "message": "Wie arbeitest du mit Git und im Team?" },
+        { "role": "user", "message": "Git nutze ich für meine eigenen Projekte, also commit, push, Branches. Bei der Arbeit sind wir nur zu zweit und machen keine richtigen Code-Reviews. Pull Requests und Reviews im größeren Team kenne ich eher aus der Uni. Da hab ich auf jeden Fall noch Luft nach oben." },
+        { "role": "bot", "message": "Danke für die ehrliche Antwort. Was ist deine Gehaltsvorstellung?" },
+        { "role": "user", "message": "Ich hab mich ein bisschen informiert und dachte an ungefähr 46.000 Euro brutto im Jahr. Da bin ich aber offen, je nachdem wie das Gesamtpaket aussieht." },
+        { "role": "bot", "message": "Und ab wann könntest du starten?" },
+        { "role": "user", "message": "Meine Bachelorarbeit gebe ich Ende Januar ab. Ab dem ersten Februar 2027 könnte ich in Vollzeit anfangen. Die Werkstudentenstelle kann ich mit zwei Wochen kündigen." },
+        { "role": "bot", "message": "Perfekt. Hast du noch Fragen an uns?" },
+        { "role": "user", "message": "Ja, zwei. Wie viel wird remote gearbeitet und wie sieht die Einarbeitung aus?" },
+        { "role": "bot", "message": "Gute Fragen. Dazu kann ich dir leider keine verbindlichen Infos geben, das klärt unser HR-Team im nächsten Schritt mit dir. Ich nehme beide Fragen ins Protokoll auf." },
+        { "role": "user", "message": "Okay, alles klar." },
+        { "role": "bot", "message": "Dann vielen Dank für das Gespräch, Jonas. Unser HR-Team meldet sich in den nächsten Tagen bei dir. Mach's gut!" },
+        { "role": "user", "message": "Danke, tschüss!" }
+      ]
+    }
+  }
+}

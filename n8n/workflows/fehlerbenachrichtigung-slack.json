@@ -1,0 +1,128 @@
+[
+  {
+    "updatedAt": "2026-11-15T16:27:44.672Z",
+    "createdAt": "2026-11-15T13:04:26.783Z",
+    "id": "nZm9wPmSbW75hhOE",
+    "name": "Fehlerbenachrichtigung – Slack",
+    "description": "Error Workflow: meldet fehlgeschlagene Ausführungen des Interview-Workflows in Slack #n8n-fehler (REQ-3.9).",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "30faa920-4fbb-48a9-b6be-2591cb8d5eda",
+        "name": "Fehler in Workflow",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          144,
+          256
+        ]
+      },
+      {
+        "parameters": {
+          "select": "channel",
+          "channelId": {
+            "__rl": true,
+            "mode": "name",
+            "value": "#n8n-fehler"
+          },
+          "text": "=:rotating_light: *Workflow fehlgeschlagen:* {{ $json.workflow.name }}\n*Node:* {{ $json.execution.lastNodeExecuted ?? \"unbekannt\" }}\n*Fehler:* {{ $json.execution.error?.message ?? \"keine Meldung\" }}\n*Modus:* {{ $json.execution.mode ?? \"-\" }}\n*Execution:* <{{ $json.execution.url }}|in n8n öffnen> (Call-ID steht in den Execution-Daten)",
+          "otherOptions": {
+            "includeLinkToWorkflow": false,
+            "mrkdwn": true
+          }
+        },
+        "id": "cd81ff68-10d8-41e7-a3ea-6271af66043b",
+        "name": "Fehler an #n8n-fehler",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.7,
+        "position": [
+          432,
+          256
+        ],
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 5000,
+        "webhookId": "8c0d52a2-2a09-4880-be04-0a4b25b6d079",
+        "credentials": {
+          "slackApi": {
+            "id": "hUPdsW9sev5mCNlM",
+            "name": "Slack Interview Bot"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "content": "## Error-Workflow\nWird von „Vapi – Bewerberinterview auswerten“ als Error Workflow aufgerufen und meldet jede fehlgeschlagene Ausführung in #n8n-fehler. So geht kein Gespräch unbemerkt verloren (REQ-3.9).",
+          "height": 352,
+          "width": 656,
+          "color": 3
+        },
+        "id": "41235724-07a9-4142-ae2d-35fa2548fe7f",
+        "name": "Sticky Note a02c31b1",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          48,
+          80
+        ]
+      }
+    ],
+    "connections": {
+      "Fehler in Workflow": {
+        "main": [
+          [
+            {
+              "node": "Fehler an #n8n-fehler",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true,
+      "binaryMode": "separate"
+    },
+    "staticData": null,
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    },
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "6f0a22e2-1438-4d8b-82af-0196afb90014",
+    "activeVersionId": "6f0a22e2-1438-4d8b-82af-0196afb90014",
+    "versionCounter": 3,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-11-15T13:04:26.785Z",
+        "createdAt": "2026-11-15T13:04:26.785Z",
+        "role": "workflow:owner",
+        "workflowId": "nZm9wPmSbW75hhOE",
+        "projectId": "vnJz6ISVsc7UjnAG",
+        "project": {
+          "updatedAt": "2026-11-15T11:46:40.140Z",
+          "createdAt": "2026-11-15T11:45:24.161Z",
+          "id": "vnJz6ISVsc7UjnAG",
+          "name": "Malik Aljazzar <malik.aljazzar@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "d72c5249-a99d-433b-bfb3-4c72b1365a36"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": "Version 6f0a22e2",
+      "description": ""
+    }
+  }
+]
