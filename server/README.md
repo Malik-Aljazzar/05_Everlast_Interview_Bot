@@ -20,7 +20,9 @@ Die UI-Dateien (`Dockerfile`, `nginx.conf`, `dist/`) liegen in `/opt/n8n/ui` und
 
 ## Admin-IP ändern
 
-In `nginx/conf.d/n8n.conf`, `nginx/conf.d/everlast.conf` und `ui/nginx.conf` die Zeile `allow ADMIN_IP;` anpassen, dann:
+Im Repo steht statt der Admin-IP der Platzhalter `ADMIN_IP`, auf dem Server die echte IP. Beim Kopieren einer Datei auf den Server den Platzhalter ersetzen; `ui/deploy.sh` setzt ihn in `ui/nginx.conf` selbst aus `ADMIN_IP` in `.env` ein.
+
+In `nginx/conf.d/n8n.conf`, `nginx/conf.d/everlast.conf` und `ui/nginx.conf` die Zeile `allow …;` anpassen (und `ADMIN_IP` in `.env`), dann:
 
 ```sh
 cd /opt/n8n
