@@ -41,7 +41,7 @@ export default function Protokolle({ stellen }: { stellen: Stelle[] }) {
       <div className="abschnitt-kopf">
         <h1>Protokolle</h1>
         <div className="abschnitt-info">
-          {protokolle.length} {protokolle.length === 1 ? 'Gespräch' : 'Gespräche'}{laufend ? ` · ${laufend} in Bearbeitung` : ''} · aktualisiert alle {ABFRAGE_MS / 1000} s
+          {protokolle.length} {protokolle.length === 1 ? 'Gespräch' : 'Gespräche'}{laufend ? ` · ${laufend} in Bearbeitung` : ''}
         </div>
       </div>
       {fehler && <div className="hinweis fehler">Verbindung unterbrochen: {fehler}</div>}
@@ -104,6 +104,7 @@ function ProtokollKarte({ p, stelle, offen, umschalten }: { p: Protokoll; stelle
           <div className="karte-name">{p.name ?? (p.status === 'laeuft' ? 'Gespräch läuft' : 'Name folgt')}</div>
           <div className="karte-meta">
             {stelle} · {datum(p.startedAt ?? p.createdAt)}
+            {p.protokoll ? ` · ${String(p.protokoll.dauerMin).replace('.', ',')} Min.` : ''}
           </div>
         </div>
         <StatusAnzeige p={p} />
@@ -124,14 +125,25 @@ function Liste({ titel, punkte }: { titel: string; punkte: string[] }) {
           ))}
         </ul>
       ) : (
-        <p className="leise">–</p>
+        <p className="leise">Keine</p>
       )}
     </div>
   );
 }
 
+// Claude beginnt die Begründung oft mit „Entspricht Stufe 3.“; die Stufe steht schon daneben.
+const ohneStufe = (text: string) => text.replace(/^Entspricht Stufe \d+[.:]?\s*/i, '');
+
 function Details({ p }: { p: Protokoll }) {
+  const [transkriptOffen, setTranskriptOffen] = useState(false);
   const d = p.protokoll;
+  const eckdaten = d
+    ? [
+        ['Gehalt', d.eckdaten.gehaltsvorstellung],
+        ['Verfügbarkeit', d.eckdaten.verfuegbarkeit],
+        ['Start', d.eckdaten.startdatum],
+      ]
+    : [];
   return (
     <div className="details">
       {d && (
@@ -142,77 +154,58 @@ function Details({ p }: { p: Protokoll }) {
           </div>
           <div className="block">
             <h3>Bewertung</h3>
-            <table className="tabelle">
-              <thead>
-                <tr>
-                  <th>Kriterium</th>
-                  <th>Stufe</th>
-                  <th>Begründung</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.bewertungen.map((b) => (
-                  <tr key={b.name}>
-                    <td className="fett">{b.name}</td>
-                    <td className="stufe">{b.score === null ? '–' : `${b.score}/${b.max}`}</td>
-                    <td>
-                      {b.begruendung}
-                      {b.zitat && <div className="zitat">„{b.zitat}“</div>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="regel">Regel: {d.regeln.join('; ')}</p>
+            <ul className="bewertungen">
+              {d.bewertungen.map((b) => (
+                <li key={b.name} className="bewertung">
+                  <span className="fett">{b.name}</span>
+                  <span className="score">{b.score === null ? '–' : `${b.score}/${b.max}`}</span>
+                  <div>
+                    <p>{ohneStufe(b.begruendung)}</p>
+                    {b.zitat && <p className="zitat">„{b.zitat}“</p>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="regel">{d.regeln.join('; ')}</p>
           </div>
-          <div className="spalten">
+          {/* Zwei Spalten nur, wenn beide Listen etwas enthalten; sonst bleibt neben „Keine“ eine Lücke. */}
+          <div className={d.staerken.length && d.schwaechen.length ? 'spalten' : 'stapel'}>
             <Liste titel="Stärken" punkte={d.staerken} />
-            <Liste titel="Schwächen / Red Flags" punkte={d.schwaechen} />
+            <Liste titel="Schwächen und Red Flags" punkte={d.schwaechen} />
           </div>
-          <div className="block">
-            <h3>Einschätzung</h3>
-            <p>{d.einschaetzung}</p>
-          </div>
-          <div className="spalten drei">
-            <div className="block">
-              <h3>Gehaltsvorstellung</h3>
-              <p>{d.eckdaten.gehaltsvorstellung || '–'}</p>
-            </div>
-            <div className="block">
-              <h3>Verfügbarkeit</h3>
-              <p>{d.eckdaten.verfuegbarkeit || '–'}</p>
-            </div>
-            <div className="block">
-              <h3>Startdatum</h3>
-              <p>{d.eckdaten.startdatum || '–'}</p>
-            </div>
-          </div>
-          <Liste titel="Offene Punkte für HR" punkte={d.offenePunkte} />
+          <dl className="eckdaten">
+            {eckdaten.map(([label, wert]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{wert || 'nicht genannt'}</dd>
+              </div>
+            ))}
+          </dl>
+          {d.offenePunkte.length > 0 && <Liste titel="Offene Punkte für HR" punkte={d.offenePunkte} />}
         </>
       )}
-      <div className="fuss">
-        {p.aufnahmeUrl && (
-          <a className="knopf zweit" href={p.aufnahmeUrl} target="_blank" rel="noreferrer">
-            Aufnahme anhören
-          </a>
-        )}
-        <span className="leise">
-          Call-ID {p.callId}
-          {d ? ` · ${String(d.dauerMin).replace('.', ',')} Min. · ${d.gespraechsende}` : ''}
-        </span>
-      </div>
-      {p.transkript && (
-        <details className="transkript">
-          <summary>Transkript</summary>
-          {p.transkript.split('\n').map((zeile, i) => {
-            const agent = zeile.startsWith('Agent:');
-            return (
-              <p key={i} className={agent ? 'agent' : 'bewerber'}>
-                {zeile}
-              </p>
-            );
-          })}
-        </details>
+      {(p.aufnahmeUrl || p.transkript) && (
+        <div className="fuss">
+          {p.aufnahmeUrl && (
+            <a className="knopf zweit" href={p.aufnahmeUrl} target="_blank" rel="noreferrer">
+              Aufnahme anhören
+            </a>
+          )}
+          {p.transkript && (
+            <button className="knopf zweit" aria-expanded={transkriptOffen} onClick={() => setTranskriptOffen(!transkriptOffen)}>
+              {transkriptOffen ? 'Transkript ausblenden' : 'Transkript anzeigen'}
+            </button>
+          )}
+        </div>
+      )}
+      {p.transkript && transkriptOffen && (
+        <div className="transkript">
+          {p.transkript.split('\n').map((zeile, i) => (
+            <p key={i} className={zeile.startsWith('Agent:') ? 'agent' : 'bewerber'}>
+              {zeile}
+            </p>
+          ))}
+        </div>
       )}
     </div>
   );

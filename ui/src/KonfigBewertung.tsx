@@ -49,23 +49,18 @@ export default function Bewertung({ entwurf, setze }: { entwurf: Stelle; setze: 
     <>
       <section className="flaeche">
         <div className="flaeche-kopf">
-          <div>
-            <h2>Empfehlung</h2>
-            <p className="leise">Aus dem gewichteten Gesamtscore. Schwere Red Flags oder ein unvollständiges Gespräch ergeben höchstens „Prüfen“.</p>
-          </div>
+          <h2>Empfehlung</h2>
           <button className="knopf zweit" onClick={() => setSchwellenOffen(true)}>
             Bearbeiten
           </button>
         </div>
         <Skala absage={entwurf.absageUnter ?? 45} einladen={entwurf.einladenAb ?? 70} />
+        <p className="leise fussnote">Schwere Red Flag oder unvollständiges Gespräch: höchstens „Prüfen“.</p>
       </section>
 
       <section className="flaeche">
         <div className="flaeche-kopf">
-          <div>
-            <h2>Kriterien</h2>
-            <p className="leise">Claude vergibt je Kriterium eine Stufe von 1 bis 5 und belegt sie mit einem Zitat.</p>
-          </div>
+          <h2>Kriterien</h2>
           <button className="knopf zweit" onClick={() => setOffen('neu')}>
             + Kriterium
           </button>

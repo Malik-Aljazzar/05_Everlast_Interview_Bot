@@ -35,7 +35,7 @@ Der Prompt liegt in `vapi/system-prompt.md` und gilt für alle Stellen. Das Depl
 | --- | --- | --- |
 | Rolle | KI-Assistent von Everlast, Art des Gesprächs je Stelle (Kennenlerngespräch bzw. kurzes Fachgespräch), entscheidet nichts | Klare Identität; offen als KI erkennbar (Transparenz, EU AI Act) |
 | Ziel | Leitfaden vollständig abdecken, Dauer je Stelle (Junior Entwickler 10–15 Minuten, Cyber Security 5–8 Minuten, nur Fachfragen) | n8n braucht alle Punkte für das Bewerberprotokoll |
-| Stelle | Unternehmen, Aufgaben, Anforderungen. Alles andere: „weiß ich nicht, das beantwortet HR“ | Verhindert erfundene Aussagen zu Gehalt, Remote, Benefits oder Team |
+| Stelle | Unternehmen, Aufgaben und Anforderungen. Alles andere: „weiß ich nicht, das beantwortet HR“ | Verhindert erfundene Aussagen zu Gehalt, Remote, Benefits oder Team |
 | Leitfaden | Aus der Data Table „Leitfaden“ (UI), Reihenfolge = position. Junior Entwickler: Einwilligung → Name → Grundlagen → Softwareentwicklung → Erfahrung → Verfügbarkeit → Fragen des Bewerbers. Cyber Security: Einwilligung → Name → Phishing-Vorfall → Webhook absichern → KI-Agent mit CRM-Zugriff | REQ-1.3; feste Reihenfolge macht Gespräche vergleichbar |
 | Gesprächsregeln | 1 Frage pro Beitrag, höchstens 2 Sätze, max. 2 Nachfragen pro Thema, kein Feedback, keine Lösungen oder Stichworte bei Fachfragen, keine AGG-Themen, Zahlen als Wörter, kein Markdown | REQ-1.4; kurze Beiträge senken die Latenz; die TTS liest alles wörtlich vor |
 | Tonalität | locker, per Du, wertschätzend, nimmt Nervosität raus | REQ-1.5, passt zur Ansprache von Everlast |

@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-11-19T21:45:48.657Z",
+    "updatedAt": "2026-11-22T17:16:30.457Z",
     "createdAt": "2026-11-19T20:47:00.306Z",
     "id": "UoiiLcuq2OvVMPeC",
     "name": "UI – API",
@@ -222,7 +222,7 @@
         ],
         "parameters": {
           "mode": "runOnceForAllItems",
-          "jsCode": "// Prüft die Konfiguration einer Stelle aus der UI und bringt sie in die Form der Data Tables.\nconst b = $input.first().json.body ?? {};\nconst text = (v) => String(v ?? '').trim();\nconst zahl = (v) => {\n  if (v === '' || v === null || v === undefined) return null;\n  const n = Number(String(v).replace(',', '.'));\n  return Number.isFinite(n) ? n : null;\n};\nconst fehler = (meldung) => [{ json: { ok: false, fehler: meldung } }];\n\nconst id = text(b.assistantId);\nif (!id) return fehler('Assistant-ID fehlt.');\nconst s = b.stelle ?? {};\nif (!text(s.stelle)) return fehler('Die Bezeichnung der Stelle fehlt.');\n\nconst kriterien = (Array.isArray(b.kriterien) ? b.kriterien : []).filter((k) => text(k.kriterium)).map((k, i) => ({\n  assistantId: id,\n  position: i + 1,\n  kriterium: text(k.kriterium),\n  gewicht: zahl(k.gewicht),\n  beschreibung: text(k.beschreibung),\n  score1: text(k.score1),\n  score2: text(k.score2),\n  score3: text(k.score3),\n  score4: text(k.score4),\n  score5: text(k.score5),\n}));\n// Kriterium im Leitfaden immer in der Schreibweise des Kriteriums speichern.\nconst kanon = new Map(kriterien.map((k) => [k.kriterium.toLowerCase(), k.kriterium]));\nconst leitfaden = (Array.isArray(b.leitfaden) ? b.leitfaden : []).filter((l) => text(l.frage)).map((l, i) => ({\n  assistantId: id,\n  position: i + 1,\n  thema: text(l.thema) || 'Frage ' + (i + 1),\n  frage: text(l.frage),\n  kriterium: kanon.get(text(l.kriterium).toLowerCase()) ?? text(l.kriterium),\n  hinweis: text(l.hinweis),\n}));\nif (!kriterien.length) return fehler('Mindestens ein Bewertungskriterium ist nötig.');\nif (!leitfaden.length) return fehler('Der Leitfaden braucht mindestens eine Frage.');\n\nif (kanon.size !== kriterien.length) return fehler('Jedes Kriterium braucht einen eigenen Namen.');\nconst unbekannt = leitfaden.filter((l) => l.kriterium && !kanon.has(l.kriterium.toLowerCase()));\nif (unbekannt.length) return fehler('Der Leitfaden verweist auf ein unbekanntes Kriterium: ' + unbekannt.map((l) => l.kriterium).join(', '));\n\nconst einladenAb = zahl(s.einladenAb) ?? 70;\nconst absageUnter = zahl(s.absageUnter) ?? 45;\nif (absageUnter > einladenAb) return fehler('„Absage unter“ darf nicht über „Einladen ab“ liegen.');\n\nreturn [{ json: {\n  ok: true,\n  assistantId: id,\n  stelle: { assistantId: id, stelle: text(s.stelle), unternehmen: text(s.unternehmen), aufgaben: text(s.aufgaben), anforderungen: text(s.anforderungen), einladenAb, absageUnter },\n  kriterien,\n  leitfaden,\n} }];"
+          "jsCode": "// Prüft die Konfiguration einer Stelle aus der UI und bringt sie in die Form der Data Tables.\nconst b = $input.first().json.body ?? {};\nconst text = (v) => String(v ?? '').trim();\nconst zahl = (v) => {\n  if (v === '' || v === null || v === undefined) return null;\n  const n = Number(String(v).replace(',', '.'));\n  return Number.isFinite(n) ? n : null;\n};\nconst fehler = (meldung) => [{ json: { ok: false, fehler: meldung } }];\n\nconst id = text(b.assistantId);\nif (!id) return fehler('Assistant-ID fehlt.');\nconst s = b.stelle ?? {};\nif (!text(s.stelle)) return fehler('Die Bezeichnung der Stelle fehlt.');\n\nconst kriterien = (Array.isArray(b.kriterien) ? b.kriterien : []).filter((k) => text(k.kriterium)).map((k, i) => ({\n  assistantId: id,\n  position: i + 1,\n  kriterium: text(k.kriterium),\n  gewicht: zahl(k.gewicht),\n  beschreibung: text(k.beschreibung),\n  score1: text(k.score1),\n  score2: text(k.score2),\n  score3: text(k.score3),\n  score4: text(k.score4),\n  score5: text(k.score5),\n}));\n// Kriterium im Leitfaden immer in der Schreibweise des Kriteriums speichern.\nconst kanon = new Map(kriterien.map((k) => [k.kriterium.toLowerCase(), k.kriterium]));\nconst leitfaden = (Array.isArray(b.leitfaden) ? b.leitfaden : []).filter((l) => text(l.frage)).map((l, i) => ({\n  assistantId: id,\n  position: i + 1,\n  thema: text(l.thema) || 'Frage ' + (i + 1),\n  frage: text(l.frage),\n  kriterium: kanon.get(text(l.kriterium).toLowerCase()) ?? text(l.kriterium),\n  hinweis: text(l.hinweis),\n}));\nif (!kriterien.length) return fehler('Mindestens ein Bewertungskriterium ist nötig.');\nif (!leitfaden.length) return fehler('Der Leitfaden braucht mindestens eine Frage.');\n\nif (kanon.size !== kriterien.length) return fehler('Jedes Kriterium braucht einen eigenen Namen.');\nconst unbekannt = leitfaden.filter((l) => l.kriterium && !kanon.has(l.kriterium.toLowerCase()));\nif (unbekannt.length) return fehler('Der Leitfaden verweist auf ein unbekanntes Kriterium: ' + unbekannt.map((l) => l.kriterium).join(', '));\n\nconst einladenAb = zahl(s.einladenAb) ?? 70;\nconst absageUnter = zahl(s.absageUnter) ?? 45;\nif (absageUnter > einladenAb) return fehler('„Absage unter“ darf nicht über „Einladen ab“ liegen.');\n\nreturn [{ json: {\n  ok: true,\n  assistantId: id,\n  stelle: { assistantId: id, stelle: text(s.stelle), unternehmen: text(s.unternehmen), beschreibung: text(s.beschreibung), einladenAb, absageUnter },\n  kriterien,\n  leitfaden,\n} }];"
         }
       },
       {
@@ -351,8 +351,7 @@
               "assistantId": "={{ $('Eingabe prüfen').first().json.stelle.assistantId }}",
               "stelle": "={{ $('Eingabe prüfen').first().json.stelle.stelle }}",
               "unternehmen": "={{ $('Eingabe prüfen').first().json.stelle.unternehmen }}",
-              "aufgaben": "={{ $('Eingabe prüfen').first().json.stelle.aufgaben }}",
-              "anforderungen": "={{ $('Eingabe prüfen').first().json.stelle.anforderungen }}",
+              "beschreibung": "={{ $('Eingabe prüfen').first().json.stelle.beschreibung }}",
               "einladenAb": "={{ $('Eingabe prüfen').first().json.stelle.einladenAb }}",
               "absageUnter": "={{ $('Eingabe prüfen').first().json.stelle.absageUnter }}"
             },
@@ -385,17 +384,8 @@
                 "canBeUsedToMatch": true
               },
               {
-                "id": "aufgaben",
-                "displayName": "aufgaben",
-                "required": false,
-                "defaultMatch": false,
-                "display": true,
-                "type": "string",
-                "canBeUsedToMatch": true
-              },
-              {
-                "id": "anforderungen",
-                "displayName": "anforderungen",
+                "id": "beschreibung",
+                "displayName": "beschreibung",
                 "required": false,
                 "defaultMatch": false,
                 "display": true,
@@ -833,7 +823,7 @@
         ],
         "parameters": {
           "mode": "runOnceForAllItems",
-          "jsCode": "// Unternehmen und Schwellen kommen aus der Vorlage; Aufgaben und Anforderungen sind stellenspezifisch und bleiben leer.\nconst v = $('Vorlage: Stelle lesen').first()?.json ?? {};\nreturn [{ json: {\n  assistantId: $input.first().json.id,\n  stelle: $('Neue Stelle prüfen').first().json.stelle,\n  unternehmen: v.unternehmen ?? '',\n  aufgaben: '',\n  anforderungen: '',\n  einladenAb: v.einladenAb ?? 70,\n  absageUnter: v.absageUnter ?? 45,\n} }];"
+          "jsCode": "// Unternehmen und Schwellen kommen aus der Vorlage; Aufgaben und Anforderungen sind stellenspezifisch und bleiben leer.\nconst v = $('Vorlage: Stelle lesen').first()?.json ?? {};\nreturn [{ json: {\n  assistantId: $input.first().json.id,\n  stelle: $('Neue Stelle prüfen').first().json.stelle,\n  unternehmen: v.unternehmen ?? '',\n  beschreibung: '',\n  einladenAb: v.einladenAb ?? 70,\n  absageUnter: v.absageUnter ?? 45,\n} }];"
         }
       },
       {
@@ -2018,9 +2008,9 @@
       }
     ],
     "pinData": null,
-    "versionId": "610a1c16-61b7-4c72-bcc5-f437d123292c",
-    "activeVersionId": "610a1c16-61b7-4c72-bcc5-f437d123292c",
-    "versionCounter": 5,
+    "versionId": "a674d2b9-5a60-4399-91b9-34ca11301953",
+    "activeVersionId": "a674d2b9-5a60-4399-91b9-34ca11301953",
+    "versionCounter": 6,
     "triggerCount": 5,
     "sourceWorkflowId": null,
     "tags": [],
@@ -2045,8 +2035,8 @@
       }
     ],
     "versionMetadata": {
-      "name": "Eigene Antwort-Knoten je Zweig, Gruppen",
-      "description": "Added nodes: Neue Stelle ungültig, Löschen abgelehnt, Vapi-Fehler beim Löschen\nConnections: 4 added, 4 removed"
+      "name": "Aufgaben und Anforderungen als ein Feld",
+      "description": "Spalte beschreibung ersetzt aufgaben und anforderungen in der Tabelle Stellen: Eingabe prüfen, Stelle speichern und Stelle-Zeile nutzen nur noch beschreibung."
     }
   }
 ]

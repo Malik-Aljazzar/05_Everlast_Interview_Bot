@@ -20,10 +20,7 @@ export default function Leitfaden({ entwurf, setze }: { entwurf: Stelle; setze: 
     <>
       <section className="flaeche">
         <div className="flaeche-kopf">
-          <div>
-            <h2>Leitfaden</h2>
-            <p className="leise">Der Agent stellt die Fragen in dieser Reihenfolge, eine pro Redebeitrag.</p>
-          </div>
+          <h2>Fragen</h2>
           <button className="knopf zweit" onClick={() => setOffen('neu')}>
             + Frage
           </button>
@@ -35,19 +32,14 @@ export default function Leitfaden({ entwurf, setze }: { entwurf: Stelle; setze: 
               <button className="zeile-haupt" onClick={() => setOffen(i)}>
                 <span className="zeile-titel">{f.thema || `Frage ${i + 1}`}</span>
                 <span className="zeile-text">„{f.frage}“</span>
-                {(f.kriterium || f.hinweis) && (
-                  <span className="chips">
-                    {f.kriterium && <span className="chip">{f.kriterium}</span>}
-                    {f.hinweis && <span className="chip grau">mit Hinweis</span>}
-                  </span>
-                )}
               </button>
+              {f.kriterium && <span className="chip">{f.kriterium}</span>}
               <Reihenfolge i={i} anzahl={leitfaden.length} onSchieben={(r) => setze({ leitfaden: verschieben(leitfaden, i, r) })} />
             </li>
           ))}
           <li className="zeile abschluss">
             <span className="nr">✓</span>
-            <span>Abschluss: nächste Schritte nennen und verabschieden (automatisch)</span>
+            <span>Abschluss und Verabschiedung (automatisch)</span>
           </li>
         </ol>
       </section>

@@ -37,10 +37,7 @@ export default function App() {
       <header className="kopf">
         <div className="marke">
           <span className="marke-punkt" />
-          <div>
-            <div className="marke-titel">Everlast Interview Bot</div>
-            <div className="marke-unter">Bewerberprotokolle und Interview-Konfiguration</div>
-          </div>
+          <div className="marke-titel">Everlast Interview Bot</div>
         </div>
         <nav className="reiter">
           <button className={ansicht === 'protokolle' ? 'aktiv' : ''} onClick={() => setAnsicht('protokolle')}>

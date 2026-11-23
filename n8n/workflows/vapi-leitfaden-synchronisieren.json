@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-11-19T20:42:41.927Z",
+    "updatedAt": "2026-11-22T17:17:11.561Z",
     "createdAt": "2026-11-15T13:51:48.146Z",
     "id": "RGKss8vJmfN3nvF1",
     "name": "Vapi – Leitfaden synchronisieren",
@@ -31,7 +31,7 @@
         "parameters": {
           "mode": "runOnceForAllItems",
           "language": "javaScript",
-          "jsCode": "// Baut je Stelle (Assistant-ID) aus den Data Tables die Prompt-Abschnitte \"Stelle\" und \"Leitfaden\" für Vapi.\nconst liste = (text) => String(text ?? '').split(/\\n|;/).map((s) => s.trim()).filter(Boolean);\nconst unterpunkte = (text) => liste(text).map((x) => '  - ' + x);\n\nconst nachPosition = (a, b) => (Number(a.position) || 0) - (Number(b.position) || 0);\nconst leitfaden = $('Leitfaden lesen').all().map((i) => i.json).filter((r) => r.assistantId && r.frage);\nconst stellen = $('Stellen lesen').all().map((i) => i.json).filter((r) => r.assistantId);\n\nreturn stellen.map((s) => {\n  const id = String(s.assistantId).trim();\n  // Reihenfolge = Spalte position (in der UI per Drag & Drop bzw. Pfeilen festgelegt).\n  const fragen = leitfaden.filter((l) => String(l.assistantId).trim() === id).sort(nachPosition);\n\n  const abschnittStelle = [\n    'Nur diese Fakten darfst du nennen:',\n    '',\n    '- Stelle: ' + s.stelle,\n    '- Unternehmen: ' + (s.unternehmen ?? ''),\n    '- Aufgaben:',\n    ...unterpunkte(s.aufgaben),\n    '- Anforderungen:',\n    ...unterpunkte(s.anforderungen),\n    '',\n    'Alles andere weißt du nicht, zum Beispiel Gehalt der Stelle, Benefits, Homeoffice oder Remote, Arbeitszeiten, Team, Kunden, Ablauf und Dauer des Bewerbungsprozesses. Erfinde dazu nichts. Sag ehrlich, dass du das nicht weißt und das HR-Team die Frage beantwortet.',\n  ].join('\\n');\n\n  const schritte = fragen.map((f, i) =>\n    (i + 1) + '. ' + f.thema + ': „' + String(f.frage).trim() + '“' + (String(f.hinweis ?? '').trim() ? ' ' + String(f.hinweis).trim() : '')\n  );\n  schritte.push((fragen.length + 1) + '. Abschluss: siehe unten.');\n  const abschnittLeitfaden = [\n    'Arbeite die Punkte in dieser Reihenfolge ab. Stell die Fragen sinngemäß so wie hier, damit alle Bewerber dieselben Kernfragen bekommen.',\n    '',\n    ...schritte,\n  ].join('\\n');\n\n  return { json: { assistantId: id, stelle: s.stelle, anzahlFragen: fragen.length, abschnittStelle, abschnittLeitfaden } };\n});"
+          "jsCode": "// Baut je Stelle (Assistant-ID) aus den Data Tables die Prompt-Abschnitte \"Stelle\" und \"Leitfaden\" für Vapi.\nconst liste = (text) => String(text ?? '').split(/\\n|;/).map((s) => s.trim()).filter(Boolean);\nconst unterpunkte = (text) => liste(text).map((x) => '  - ' + x);\n\nconst nachPosition = (a, b) => (Number(a.position) || 0) - (Number(b.position) || 0);\nconst leitfaden = $('Leitfaden lesen').all().map((i) => i.json).filter((r) => r.assistantId && r.frage);\nconst stellen = $('Stellen lesen').all().map((i) => i.json).filter((r) => r.assistantId);\n\nreturn stellen.map((s) => {\n  const id = String(s.assistantId).trim();\n  // Reihenfolge = Spalte position (in der UI per Drag & Drop bzw. Pfeilen festgelegt).\n  const fragen = leitfaden.filter((l) => String(l.assistantId).trim() === id).sort(nachPosition);\n\n  const abschnittStelle = [\n    'Nur diese Fakten darfst du nennen:',\n    '',\n    '- Stelle: ' + s.stelle,\n    '- Unternehmen: ' + (s.unternehmen ?? ''),\n    '- Aufgaben und Anforderungen:',\n    ...unterpunkte(s.beschreibung),\n    '',\n    'Alles andere weißt du nicht, zum Beispiel Gehalt der Stelle, Benefits, Homeoffice oder Remote, Arbeitszeiten, Team, Kunden, Ablauf und Dauer des Bewerbungsprozesses. Erfinde dazu nichts. Sag ehrlich, dass du das nicht weißt und das HR-Team die Frage beantwortet.',\n  ].join('\\n');\n\n  const schritte = fragen.map((f, i) =>\n    (i + 1) + '. ' + f.thema + ': „' + String(f.frage).trim() + '“' + (String(f.hinweis ?? '').trim() ? ' ' + String(f.hinweis).trim() : '')\n  );\n  schritte.push((fragen.length + 1) + '. Abschluss: siehe unten.');\n  const abschnittLeitfaden = [\n    'Arbeite die Punkte in dieser Reihenfolge ab. Stell die Fragen sinngemäß so wie hier, damit alle Bewerber dieselben Kernfragen bekommen.',\n    '',\n    ...schritte,\n  ].join('\\n');\n\n  return { json: { assistantId: id, stelle: s.stelle, anzahlFragen: fragen.length, abschnittStelle, abschnittLeitfaden } };\n});"
         }
       },
       {
@@ -382,9 +382,9 @@
       }
     ],
     "pinData": null,
-    "versionId": "bdb3824c-546e-484c-bdf5-921f100a4bca",
-    "activeVersionId": "bdb3824c-546e-484c-bdf5-921f100a4bca",
-    "versionCounter": 9,
+    "versionId": "31666db3-32e9-40e0-b5cc-cef4c78908c8",
+    "activeVersionId": "31666db3-32e9-40e0-b5cc-cef4c78908c8",
+    "versionCounter": 10,
     "triggerCount": 0,
     "sourceWorkflowId": null,
     "tags": [],
@@ -409,8 +409,8 @@
       }
     ],
     "versionMetadata": {
-      "name": "Data Tables statt Google Sheets, Aufruf aus der UI",
-      "description": "Liest Stellen und Leitfaden aus den n8n Data Tables (Reihenfolge über position). Startet nach dem Speichern in der UI (Execute Workflow Trigger) statt jede Minute; manuell startbar."
+      "name": "Aufgaben und Anforderungen als ein Feld",
+      "description": "Prompt-Abschnitt Stelle nutzt die neue Spalte beschreibung statt aufgaben und anforderungen."
     }
   }
 ]

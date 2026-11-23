@@ -22,14 +22,13 @@ services:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
 
-  # Interview-UI (React + nginx, ui/). Vorerst HTTP auf Port 8080 und nur von der Admin-IP (ui/nginx.conf).
+  # Interview-UI (React + nginx, ui/). Kein eigener Port: nur über nginx unter https://everlast.mal-zeta.de,
+  # nur von der Admin-IP (nginx/conf.d/everlast.conf und ui/nginx.conf).
   ui:
     build: ./ui
     image: everlast-ui:latest
     container_name: ui
     restart: unless-stopped
-    ports:
-      - "8080:80"
     depends_on:
       - n8n
 

@@ -98,9 +98,6 @@ export default function Konfiguration({ stellen, geladen, onNeuLaden }: { stelle
                 {zeige.stelle || 'Ohne Bezeichnung'}
                 {aktiv && geaendert && <span className="ungespeichert" title="Ungespeicherte Änderungen" />}
               </span>
-              <span className="stelle-meta">
-                {zeige.kriterien.length} Kriterien · {zeige.leitfaden.length} Fragen
-              </span>
             </button>
           );
         })}
@@ -111,12 +108,7 @@ export default function Konfiguration({ stellen, geladen, onNeuLaden }: { stelle
 
       <div className="stelle-bereich">
         <div className="stelle-kopf">
-          <div>
-            <h1>{entwurf.stelle || 'Ohne Bezeichnung'}</h1>
-            <p className="assistant-id">
-              Vapi-Assistant <code>{entwurf.assistantId}</code>
-            </p>
-          </div>
+          <h1>{entwurf.stelle || 'Ohne Bezeichnung'}</h1>
           <button className="text-knopf gefahr" onClick={() => setOffen({ art: 'loeschen' })}>
             Stelle löschen
           </button>

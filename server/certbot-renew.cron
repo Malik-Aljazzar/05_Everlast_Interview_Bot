@@ -1,4 +1,4 @@
-# Let's-Encrypt-Zertifikat für nginx (n8n.mal-zeta.de) verlängern.
+# Let's-Encrypt-Zertifikate für nginx (n8n.mal-zeta.de, everlast.mal-zeta.de) verlängern.
 # certbot erneuert erst kurz vor Ablauf; danach lädt nginx das Zertifikat neu.
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

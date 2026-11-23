@@ -10,7 +10,7 @@ const punkte = (text: string) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-type Angaben = Pick<Stelle, 'stelle' | 'unternehmen' | 'aufgaben' | 'anforderungen'>;
+type Angaben = Pick<Stelle, 'stelle' | 'unternehmen' | 'beschreibung'>;
 
 export default function StelleAnsicht({ entwurf, setze }: { entwurf: Stelle; setze: (teil: Partial<Stelle>) => void }) {
   const [offen, setOffen] = useState(false);
@@ -19,26 +19,19 @@ export default function StelleAnsicht({ entwurf, setze }: { entwurf: Stelle; set
     <>
       <section className="flaeche">
         <div className="flaeche-kopf">
-          <div>
-            <h2>Was der Agent über die Stelle weiß</h2>
-            <p className="leise">Fragen der Bewerber beantwortet er nur mit diesen Angaben, alles andere verweist er an HR.</p>
+          <div className="fakt">
+            <h3>Unternehmen</h3>
+            {entwurf.unternehmen ? <p>{entwurf.unternehmen}</p> : <p className="leer-text">Nicht eingetragen</p>}
           </div>
           <button className="knopf zweit" onClick={() => setOffen(true)}>
             Bearbeiten
           </button>
         </div>
-        <div className="fakt">
-          <h3>Unternehmen</h3>
-          {entwurf.unternehmen ? <p>{entwurf.unternehmen}</p> : <p className="leer-text">Nicht eingetragen</p>}
-        </div>
-        <div className="zwei">
-          <Punkte titel="Aufgaben" eintraege={punkte(entwurf.aufgaben)} />
-          <Punkte titel="Anforderungen" eintraege={punkte(entwurf.anforderungen)} />
-        </div>
+        <Punkte titel="Aufgaben und Anforderungen" eintraege={punkte(entwurf.beschreibung)} />
       </section>
       {offen && (
         <StelleDialog
-          start={{ stelle: entwurf.stelle, unternehmen: entwurf.unternehmen, aufgaben: entwurf.aufgaben, anforderungen: entwurf.anforderungen }}
+          start={{ stelle: entwurf.stelle, unternehmen: entwurf.unternehmen, beschreibung: entwurf.beschreibung }}
           onUebernehmen={(a) => {
             setze(a);
             setOffen(false);
@@ -55,7 +48,7 @@ function Punkte({ titel, eintraege }: { titel: string; eintraege: string[] }) {
     <div className="fakt">
       <h3>{titel}</h3>
       {eintraege.length ? (
-        <ul className="punkte">
+        <ul className="punkte punkte-spalten">
           {eintraege.map((e, i) => (
             <li key={i}>{e}</li>
           ))}
@@ -93,14 +86,9 @@ function StelleDialog({ start, onUebernehmen, onSchliessen }: { start: Angaben; 
       <Feld label="Unternehmen">
         <textarea rows={2} value={a.unternehmen} onChange={(e) => setze({ unternehmen: e.target.value })} />
       </Feld>
-      <div className="zwei">
-        <Feld label="Aufgaben" hilfe="Eine pro Zeile">
-          <textarea rows={8} value={a.aufgaben} onChange={(e) => setze({ aufgaben: e.target.value })} />
-        </Feld>
-        <Feld label="Anforderungen" hilfe="Eine pro Zeile">
-          <textarea rows={8} value={a.anforderungen} onChange={(e) => setze({ anforderungen: e.target.value })} />
-        </Feld>
-      </div>
+      <Feld label="Aufgaben und Anforderungen" hilfe="Eine Angabe pro Zeile">
+        <textarea rows={12} value={a.beschreibung} onChange={(e) => setze({ beschreibung: e.target.value })} />
+      </Feld>
     </Dialog>
   );
 }

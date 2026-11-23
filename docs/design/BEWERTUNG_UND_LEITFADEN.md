@@ -30,7 +30,7 @@ Bis 19.11. lag die Konfiguration in Google Sheets. Seitdem liegt alles in den Da
 | Spalte | Bedeutung | Standard, wenn leer |
 | --- | --- | --- |
 | assistantId | ID des Vapi-Assistants dieser Stelle | Pflicht |
-| stelle, unternehmen, aufgaben, anforderungen | Stellenprofil. Listen mit Zeilenumbruch trennen. Geht als Faktenbasis an den Agent und als Maßstab an die Analyse | – |
+| stelle, unternehmen, beschreibung | Stellenprofil; beschreibung enthält Aufgaben und Anforderungen in einem Feld, eine Angabe pro Zeile. Geht als Faktenbasis an den Agent und als Maßstab an die Analyse | – |
 | einladenAb / absageUnter | Schwellen für die Empfehlung in % | 70 / 45 |
 
 ### Kriterien (eine Zeile pro Kriterium)

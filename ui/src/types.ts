@@ -70,8 +70,8 @@ export interface Stelle {
   assistantId: string;
   stelle: string;
   unternehmen: string;
-  aufgaben: string;
-  anforderungen: string;
+  // Aufgaben und Anforderungen in einem Feld, eine Angabe pro Zeile.
+  beschreibung: string;
   einladenAb: number | null;
   absageUnter: number | null;
   kriterien: Kriterium[];

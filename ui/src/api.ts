@@ -29,8 +29,7 @@ export const speichereStelle = (stelle: Stelle) =>
       stelle: {
         stelle: stelle.stelle,
         unternehmen: stelle.unternehmen,
-        aufgaben: stelle.aufgaben,
-        anforderungen: stelle.anforderungen,
+        beschreibung: stelle.beschreibung,
         einladenAb: stelle.einladenAb,
         absageUnter: stelle.absageUnter,
       },

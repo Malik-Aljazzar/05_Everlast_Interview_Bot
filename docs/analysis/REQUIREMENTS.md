@@ -279,7 +279,7 @@ Die UI listet alle Gespräche, neueste zuerst, und aktualisiert sich alle 3 Seku
 Stelle, Kriterien (Gewicht mit Anteil in %, Stufen 1–5) und Leitfaden (Reihenfolge, Kriterium je Frage, Hinweis) werden in der UI bearbeitet. Speichern prüft die Eingaben, schreibt die Data Tables und überträgt Stelle und Leitfaden sofort in den Vapi-Prompt.
 
 **REQ-10.3 – Betrieb und Zugriff** `MUST`
-React-App als statische Seite in einem nginx-Container auf dem Hetzner-Server; der Container leitet `/api` im Docker-Netz an die n8n-Webhooks `/webhook/ui/*`. Vorerst HTTP auf Port 8080 und nur von der Admin-IP; DNS-Name, HTTPS und Login folgen. Die Webhooks `/webhook/ui/*` sind auf der öffentlichen Domain ebenfalls auf die Admin-IP beschränkt.
+React-App als statische Seite in einem nginx-Container auf dem Hetzner-Server; der Container leitet `/api` im Docker-Netz an die n8n-Webhooks `/webhook/ui/*`. Erreichbar unter `https://everlast.mal-zeta.de` über den nginx-Proxy, nur von der Admin-IP; Login folgt. Die Webhooks `/webhook/ui/*` sind auf der öffentlichen Domain ebenfalls auf die Admin-IP beschränkt.
 
 ---
 

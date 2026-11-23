@@ -4,7 +4,7 @@ Web-Oberfläche für HR (seit 2026-11-19, REQUIREMENTS F10). Ersetzt Google Shee
 
 | | |
 | --- | --- |
-| Adresse | `http://n8n.mal-zeta.de:8080` (vorerst HTTP, nur von der Admin-IP; DNS-Name, HTTPS und Login folgen) |
+| Adresse | `https://everlast.mal-zeta.de` (nur von der Admin-IP; Login folgt) |
 | Code | [`ui/`](../../ui/): React 19 + TypeScript, Vite |
 | Betrieb | Container `ui` (nginx) in `/opt/n8n` auf dem Hetzner-Server, siehe [`server/`](../../server/) |
 | Ausliefern | `bash ui/deploy.sh` (baut lokal, kopiert `dist/` auf den Server, baut den Container neu) |
@@ -13,7 +13,7 @@ Web-Oberfläche für HR (seit 2026-11-19, REQUIREMENTS F10). Ersetzt Google Shee
 ## Aufbau
 
 ```
-Browser ──► ui (nginx, Port 8080) ──/api/*──► n8n:5678/webhook/ui/*  (Workflow „UI – API“) ──► n8n Data Tables
+Browser ──► nginx-Proxy ──► ui:80 ──/api/*──► n8n:5678/webhook/ui/*  (Workflow „UI – API“) ──► n8n Data Tables
                                                                                                Stellen, Kriterien,
 Vapi ──status-update / end-of-call-report──► Workflow „Bewerberinterview auswerten“ ─────────► Leitfaden, Protokolle
 ```
@@ -38,7 +38,7 @@ Ein verspätetes `ended` setzt ein fertiges Protokoll nicht zurück (Knoten „S
 
 | Reiter | Ansicht | Dialog |
 | --- | --- | --- |
-| Stelle | Unternehmen, Aufgaben, Anforderungen als Listen | Bezeichnung, Unternehmen, Aufgaben, Anforderungen |
+| Stelle | Unternehmen, Aufgaben und Anforderungen als eine Liste | Bezeichnung, Unternehmen, Aufgaben und Anforderungen (ein Feld) |
 | Bewertung | Skala Absage / Prüfen / Einladen; Kriterien als Zeilen mit Anteil am Gesamtscore | Schwellen mit Vorschau; Kriterium mit Name, Gewicht, Beschreibung, Stufen 1–5 |
 | Leitfaden | Fragen in Reihenfolge mit Kriterium und Hinweis-Markierung, danach der automatische Abschluss | Thema, Frage, Kriterium, Hinweis für den Agent |
 
